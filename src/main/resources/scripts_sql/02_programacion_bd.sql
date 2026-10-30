@@ -52,6 +52,11 @@ BEGIN
     SELECT cantidad_stock, fecha_vencimiento INTO v_stock, v_vencimiento
     FROM inventario WHERE id = NEW.producto_id;
 
+    IF NEW.consulta_id IS NULL AND NEW.procedimiento_id IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Prescripcion invalida: Debe estar asociada a una consulta o procedimiento medico.';
+    END IF;
+
     IF v_vencimiento IS NOT NULL AND v_vencimiento <= CURDATE() THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Medicamento vencido: No se puede prescribir un producto vencido.';
@@ -73,6 +78,11 @@ FOR EACH ROW
 BEGIN
     DECLARE v_stock INT;
     DECLARE v_vencimiento DATE;
+
+    IF NEW.mascota_id IS NULL AND (NEW.nombre_mascota_temporal IS NULL OR TRIM(NEW.nombre_mascota_temporal) = '') THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Identificacion requerida: Debe especificar una mascota registrada o un nombre temporal.';
+    END IF;
 
     SELECT cantidad_stock, fecha_vencimiento INTO v_stock, v_vencimiento
     FROM inventario WHERE id = NEW.vacuna_id;

@@ -295,8 +295,7 @@ CREATE TABLE prescripciones (
   INDEX idx_presc_procedimiento (procedimiento_id),
   INDEX idx_presc_producto (producto_id),
   INDEX idx_presc_fecha (fecha_prescripcion),
-  CONSTRAINT chk_presc_cantidad CHECK (cantidad > 0),
-  CONSTRAINT chk_presc_referencia CHECK (consulta_id IS NOT NULL OR procedimiento_id IS NOT NULL)
+  CONSTRAINT chk_presc_cantidad CHECK (cantidad > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE procedimiento_insumos (
@@ -390,11 +389,7 @@ CREATE TABLE factura_detalles (
   INDEX idx_fac_det_servicio (servicio_id),
   CONSTRAINT chk_fac_det_cantidad CHECK (cantidad > 0),
   CONSTRAINT chk_fac_det_precio CHECK (precio_unitario >= 0.00),
-  CONSTRAINT chk_fac_det_subtotal CHECK (subtotal >= 0.00),
-  CONSTRAINT chk_fac_det_tipo CHECK (
-    (tipo_item = 'Producto' AND producto_id IS NOT NULL) OR
-    (tipo_item = 'Servicio' AND servicio_id IS NOT NULL)
-  )
+  CONSTRAINT chk_fac_det_subtotal CHECK (subtotal >= 0.00)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Actividades especiales
@@ -475,8 +470,7 @@ CREATE TABLE registro_jornada_vacunacion (
   INDEX idx_reg_especie (especie_id),
   INDEX idx_reg_vacuna (vacuna_id),
   INDEX idx_reg_veterinario (veterinario_id),
-  INDEX idx_reg_fecha (fecha_hora),
-  CONSTRAINT chk_identificacion_mascota CHECK (mascota_id IS NOT NULL OR nombre_mascota_temporal IS NOT NULL)
+  INDEX idx_reg_fecha (fecha_hora)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE club_mascotas (
