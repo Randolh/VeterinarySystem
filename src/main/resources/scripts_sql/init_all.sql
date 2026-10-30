@@ -20,3 +20,8 @@ FROM alertas_sistema;
 SELECT TRIGGER_NAME AS trigger_nombre, EVENT_MANIPULATION AS evento, EVENT_OBJECT_TABLE AS tabla
 FROM information_schema.TRIGGERS
 WHERE TRIGGER_SCHEMA = 'happy_feet_veterinaria';
+
+-- Verificacion de eventos programados
+SELECT EVENT_NAME AS evento_nombre, STATUS AS estado, INTERVAL_VALUE AS intervalo_valor, INTERVAL_FIELD AS intervalo_unidad
+FROM information_schema.EVENTS
+WHERE EVENT_SCHEMA = 'happy_feet_veterinaria';
