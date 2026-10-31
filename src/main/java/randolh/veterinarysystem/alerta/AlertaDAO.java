@@ -28,38 +28,6 @@ public class AlertaDAO {
             "FROM alertas_sistema a " +
             "LEFT JOIN inventario i ON a.referencia_id = i.id ";
 
-    public AlertaDAO() {
-        asegurarTabla();
-    }
-
-    // Asegura que la tabla de alertas exista en la base de datos
-    public void asegurarTabla() {
-        String sql = "CREATE TABLE IF NOT EXISTS alertas_sistema (" +
-                "  id INT AUTO_INCREMENT PRIMARY KEY," +
-                "  tipo_alerta ENUM('STOCK_MINIMO', 'PRODUCTO_VENCIDO', 'PRODUCTO_POR_VENCER', 'CITA_PENDIENTE', 'GENERAL') NOT NULL," +
-                "  nivel_severidad ENUM('Informativa', 'Advertencia', 'Critica') NOT NULL," +
-                "  referencia_tabla VARCHAR(50) NULL," +
-                "  referencia_id INT NULL," +
-                "  mensaje TEXT NOT NULL," +
-                "  fecha_generacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-                "  leida BOOLEAN NOT NULL DEFAULT FALSE," +
-                "  fecha_atencion DATETIME NULL," +
-                "  INDEX idx_alertas_tipo (tipo_alerta)," +
-                "  INDEX idx_alertas_severidad (nivel_severidad)," +
-                "  INDEX idx_alertas_leida (leida)," +
-                "  INDEX idx_alertas_fecha (fecha_generacion)" +
-                ")";
-
-        try {
-            Connection conn = ConexionBD.getInstancia().getConexion();
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute(sql);
-            }
-        } catch (Exception e) {
-            LoggerManager.warning(MODULO, "No se pudo verificar/crear tabla alertas_sistema (posible modo offline): " + e.getMessage());
-        }
-    }
-
     // Inserta una alerta y captura su ID autoincremental
     public Alerta insertar(Alerta a) {
         String sql = "INSERT INTO alertas_sistema (tipo_alerta, nivel_severidad, referencia_tabla, " +
