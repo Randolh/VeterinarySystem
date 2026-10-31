@@ -22,69 +22,49 @@ public class AlertaDAO {
     private static final String MODULO = "AlertaDAO";
 
     private static final String SELECT_BASE =
-            "SELECT a.id, a.tipo_alerta, a.nivel_severidad, a.titulo, a.mensaje, " +
-            "a.producto_id, a.referencia_id, a.fecha_generacion, a.leida, " +
+            "SELECT a.id, a.tipo_alerta, a.nivel_severidad, a.mensaje AS titulo, a.mensaje, " +
+            "a.referencia_id AS producto_id, a.referencia_id, a.fecha_generacion, a.leida, " +
             "i.nombre_producto " +
             "FROM alertas_sistema a " +
-            "LEFT JOIN inventario i ON a.producto_id = i.id ";
-
-    public AlertaDAO() {
-        asegurarTabla();
-    }
-
-    // Asegura que la tabla de alertas exista en la base de datos
-    public void asegurarTabla() {
-        String sql = "CREATE TABLE IF NOT EXISTS alertas_sistema (" +
-                "  id INT AUTO_INCREMENT PRIMARY KEY," +
-                "  tipo_alerta ENUM('STOCK_MINIMO', 'POR_VENCER', 'VENCIDO', 'CITA_PROXIMA') NOT NULL," +
-                "  nivel_severidad ENUM('INFO', 'ADVERTENCIA', 'CRITICO') NOT NULL," +
-                "  titulo VARCHAR(150) NOT NULL," +
-                "  mensaje TEXT NOT NULL," +
-                "  producto_id INT NULL," +
-                "  referencia_id INT NULL," +
-                "  fecha_generacion DATETIME DEFAULT CURRENT_TIMESTAMP," +
-                "  leida BOOLEAN DEFAULT FALSE," +
-                "  INDEX idx_tipo (tipo_alerta)," +
-                "  INDEX idx_leida (leida)," +
-                "  INDEX idx_fecha (fecha_generacion)" +
-                ")";
-
-        try {
-            Connection conn = ConexionBD.getInstancia().getConexion();
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute(sql);
-            }
-        } catch (Exception e) {
-            LoggerManager.warning(MODULO, "No se pudo verificar/crear tabla alertas_sistema (posible modo offline): " + e.getMessage());
-        }
-    }
+            "LEFT JOIN inventario i ON a.referencia_id = i.id ";
 
     // Inserta una alerta y captura su ID autoincremental
     public Alerta insertar(Alerta a) {
-        String sql = "INSERT INTO alertas_sistema (tipo_alerta, nivel_severidad, titulo, mensaje, " +
-                "producto_id, referencia_id, fecha_generacion, leida) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO alertas_sistema (tipo_alerta, nivel_severidad, referencia_tabla, " +
+                "referencia_id, mensaje, fecha_generacion, leida) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         Connection conn = ConexionBD.getInstancia().getConexion();
         try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setString(1, a.getTipoAlerta().getValorDb());
-            stmt.setString(2, a.getNivelSeveridad().getValorDb());
-            stmt.setString(3, a.getTitulo());
-            stmt.setString(4, a.getMensaje());
+            String tipoDb = switch (a.getTipoAlerta()) {
+                case STOCK_MINIMO -> "STOCK_MINIMO";
+                case VENCIDO -> "PRODUCTO_VENCIDO";
+                case POR_VENCER -> "PRODUCTO_POR_VENCER";
+                case CITA_PROXIMA -> "CITA_PENDIENTE";
+            };
+            stmt.setString(1, tipoDb);
 
-            if (a.getProductoId() != null) {
-                stmt.setInt(5, a.getProductoId());
+            String sevDb = switch (a.getNivelSeveridad()) {
+                case INFO -> "Informativa";
+                case ADVERTENCIA -> "Advertencia";
+                case CRITICO -> "Critica";
+            };
+            stmt.setString(2, sevDb);
+
+            String refTabla = a.getProductoId() != null ? "inventario" : "sistema";
+            stmt.setString(3, refTabla);
+
+            Integer refId = a.getProductoId() != null ? a.getProductoId() : a.getReferenciaId();
+            if (refId != null) {
+                stmt.setInt(4, refId);
             } else {
-                stmt.setNull(5, Types.INTEGER);
+                stmt.setNull(4, Types.INTEGER);
             }
 
-            if (a.getReferenciaId() != null) {
-                stmt.setInt(6, a.getReferenciaId());
-            } else {
-                stmt.setNull(6, Types.INTEGER);
-            }
-
-            stmt.setTimestamp(7, Timestamp.valueOf(a.getFechaGeneracion()));
-            stmt.setBoolean(8, a.isLeida());
+            String msgCompleto = (a.getTitulo() != null && !a.getTitulo().isBlank()) ?
+                    a.getTitulo() + ": " + a.getMensaje() : a.getMensaje();
+            stmt.setString(5, msgCompleto != null ? msgCompleto : "Alerta de sistema");
+            stmt.setTimestamp(6, Timestamp.valueOf(a.getFechaGeneracion()));
+            stmt.setBoolean(7, a.isLeida());
 
             stmt.executeUpdate();
             try (ResultSet rs = stmt.getGeneratedKeys()) {
@@ -106,7 +86,7 @@ public class AlertaDAO {
         List<Alerta> lista = new ArrayList<>();
         String sql = SELECT_BASE +
                 "WHERE a.leida = FALSE " +
-                "ORDER BY FIELD(a.nivel_severidad, 'CRITICO', 'ADVERTENCIA', 'INFO'), a.fecha_generacion DESC";
+                "ORDER BY FIELD(a.nivel_severidad, 'Critica', 'Advertencia', 'Informativa'), a.fecha_generacion DESC";
 
         Connection conn = ConexionBD.getInstancia().getConexion();
         try (PreparedStatement stmt = conn.prepareStatement(sql);

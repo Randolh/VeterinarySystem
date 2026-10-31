@@ -28,8 +28,8 @@ public class ConsultaDAO {
     private static final String MODULO = "ConsultaDAO";
 
     private static final String SELECT_CONSULTA_BASE =
-            "SELECT cm.id, cm.mascota_id, cm.veterinario_id, cm.cita_id, cm.fecha_hora, cm.motivo, " +
-            "cm.sintomas, cm.diagnostico, cm.recomendaciones, cm.observaciones, cm.peso_registrado, " +
+            "SELECT cm.id, cm.mascota_id, cm.veterinario_id, cm.cita_id, cm.fecha_hora, cm.motivo_visita AS motivo, " +
+            "cm.sintomas, cm.diagnostico, cm.recomendaciones, cm.tratamiento_indicaciones AS observaciones, cm.peso_registrado, " +
             "cm.temperatura, m.nombre AS mascota_nombre, d.nombre_completo AS dueno_nombre, " +
             "v.nombre_completo AS veterinario_nombre " +
             "FROM consultas_medicas cm " +
@@ -39,9 +39,9 @@ public class ConsultaDAO {
 
     private static final String SELECT_PROCEDIMIENTO_BASE =
             "SELECT pe.id, pe.mascota_id, pe.veterinario_id, pe.tipo_procedimiento, pe.nombre_procedimiento, " +
-            "pe.fecha_hora, pe.duracion_estimada_minutos, pe.informacion_preoperatoria, " +
-            "pe.detalle_procedimiento, pe.complicaciones, pe.seguimiento_postoperatorio, " +
-            "pe.proximo_control, pe.estado, pe.costo_procedimiento, " +
+            "pe.fecha_programada AS fecha_hora, pe.duracion_estimada_minutos, pe.notas_preoperatorias AS informacion_preoperatoria, " +
+            "pe.notas_procedimiento AS detalle_procedimiento, pe.notas_postoperatorias AS complicaciones, pe.seguimiento_postoperatorio, " +
+            "pe.proximo_control, pe.estado, pe.costo_base AS costo_procedimiento, " +
             "m.nombre AS mascota_nombre, d.nombre_completo AS dueno_nombre, " +
             "v.nombre_completo AS veterinario_nombre " +
             "FROM procedimientos_especiales pe " +
@@ -58,7 +58,7 @@ public class ConsultaDAO {
         return TransaccionManager.ejecutarEnTransaccion(conn -> {
             // 1. Insertar consulta medica
             String sqlConsulta = "INSERT INTO consultas_medicas (mascota_id, veterinario_id, cita_id, fecha_hora, " +
-                    "motivo, sintomas, diagnostico, recomendaciones, observaciones, peso_registrado, temperatura) " +
+                    "motivo_visita, sintomas, diagnostico, recomendaciones, tratamiento_indicaciones, peso_registrado, temperatura) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlConsulta, Statement.RETURN_GENERATED_KEYS)) {
@@ -210,8 +210,8 @@ public class ConsultaDAO {
         }
 
         // Registrar movimiento de kardex
-        String sqlKardex = "INSERT INTO movimientos_inventario (producto_id, tipo_movimiento, cantidad, " +
-                "stock_anterior, stock_nuevo, motivo, referencia_consulta_id, usuario, fecha_movimiento) " +
+        String sqlKardex = "INSERT INTO inventario_movimientos (producto_id, tipo_movimiento, cantidad, " +
+                "stock_anterior, stock_nuevo, motivo, referencia_consulta_id, usuario, fecha_hora) " +
                 "VALUES (?, 'Salida', ?, ?, ?, ?, ?, 'Sistema', NOW())";
         try (PreparedStatement stmt = conn.prepareStatement(sqlKardex)) {
             stmt.setInt(1, p.getProductoId());
@@ -243,9 +243,9 @@ public class ConsultaDAO {
         return TransaccionManager.ejecutarEnTransaccion(conn -> {
             // 1. Insertar procedimiento especial
             String sqlProc = "INSERT INTO procedimientos_especiales (mascota_id, veterinario_id, tipo_procedimiento, " +
-                    "nombre_procedimiento, fecha_hora, duracion_estimada_minutos, informacion_preoperatoria, " +
-                    "detalle_procedimiento, complicaciones, seguimiento_postoperatorio, proximo_control, " +
-                    "estado, costo_procedimiento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    "nombre_procedimiento, fecha_programada, duracion_estimada_minutos, notas_preoperatorias, " +
+                    "notas_procedimiento, notas_postoperatorias, seguimiento_postoperatorio, proximo_control, " +
+                    "estado, costo_base) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlProc, Statement.RETURN_GENERATED_KEYS)) {
                 stmt.setInt(1, proc.getMascotaId());
@@ -350,7 +350,7 @@ public class ConsultaDAO {
         }
 
         // Insertar registro de insumo
-        String sqlInsumo = "INSERT INTO insumos_procedimientos (procedimiento_id, producto_id, cantidad_usada, observaciones) " +
+        String sqlInsumo = "INSERT INTO procedimiento_insumos (procedimiento_id, producto_id, cantidad_utilizada, observaciones) " +
                 "VALUES (?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sqlInsumo, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setInt(1, procedimientoId);
@@ -367,8 +367,8 @@ public class ConsultaDAO {
         }
 
         // Registrar en kardex
-        String sqlKardex = "INSERT INTO movimientos_inventario (producto_id, tipo_movimiento, cantidad, " +
-                "stock_anterior, stock_nuevo, motivo, referencia_procedimiento_id, usuario, fecha_movimiento) " +
+        String sqlKardex = "INSERT INTO inventario_movimientos (producto_id, tipo_movimiento, cantidad, " +
+                "stock_anterior, stock_nuevo, motivo, referencia_procedimiento_id, usuario, fecha_hora) " +
                 "VALUES (?, 'Salida', ?, ?, ?, ?, ?, 'Sistema', NOW())";
         try (PreparedStatement stmt = conn.prepareStatement(sqlKardex)) {
             stmt.setInt(1, ins.getProductoId());
@@ -497,7 +497,7 @@ public class ConsultaDAO {
     // Lista procedimientos de una mascota
     public List<ProcedimientoEspecial> listarProcedimientosPorMascota(int mascotaId) {
         List<ProcedimientoEspecial> lista = new ArrayList<>();
-        String sql = SELECT_PROCEDIMIENTO_BASE + "WHERE pe.mascota_id = ? ORDER BY pe.fecha_hora DESC";
+        String sql = SELECT_PROCEDIMIENTO_BASE + "WHERE pe.mascota_id = ? ORDER BY pe.fecha_programada DESC";
 
         Connection conn = ConexionBD.getInstancia().getConexion();
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -570,9 +570,9 @@ public class ConsultaDAO {
     // Lista insumos consumidos en un procedimiento
     public List<InsumoProcedimiento> listarInsumosPorProcedimiento(int procId) {
         List<InsumoProcedimiento> lista = new ArrayList<>();
-        String sql = "SELECT ip.id, ip.procedimiento_id, ip.producto_id, ip.cantidad_usada, ip.observaciones, " +
+        String sql = "SELECT ip.id, ip.procedimiento_id, ip.producto_id, ip.cantidad_utilizada AS cantidad_usada, ip.observaciones, " +
                 "i.nombre_producto, i.unidad_medida " +
-                "FROM insumos_procedimientos ip " +
+                "FROM procedimiento_insumos ip " +
                 "INNER JOIN inventario i ON ip.producto_id = i.id " +
                 "WHERE ip.procedimiento_id = ? ORDER BY ip.id ASC";
 
