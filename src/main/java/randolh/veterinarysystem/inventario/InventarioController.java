@@ -3,6 +3,7 @@ package randolh.veterinarysystem.inventario;
 import randolh.veterinarysystem.core.config.TransaccionManager;
 import randolh.veterinarysystem.core.exception.InventarioException;
 import randolh.veterinarysystem.core.exception.ValidacionException;
+import randolh.veterinarysystem.core.patterns.observer.GestorEventos;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 
 import java.math.BigDecimal;
@@ -213,7 +214,7 @@ public class InventarioController {
             throw new ValidacionException("Tipo de movimiento invalido para una salida de almacen.");
         }
 
-        return TransaccionManager.ejecutarEnTransaccion(conn -> {
+        boolean resultado = TransaccionManager.ejecutarEnTransaccion(conn -> {
             Producto p = inventarioDAO.buscarProductoPorId(productoId)
                     .orElseThrow(() -> new ValidacionException("Producto no encontrado con ID: " + productoId));
 
@@ -246,6 +247,15 @@ public class InventarioController {
                     productoId, cantidad, tipo.getDescripcion(), stockNuevo));
             return true;
         });
+
+        // Notificacion reactiva al patron Observer si el stock cayo al minimo o menor
+        inventarioDAO.buscarProductoPorId(productoId).ifPresent(prodActual -> {
+            if (prodActual.isBajoStockMinimo()) {
+                GestorEventos.getInstancia().notificar("INVENTARIO_STOCK_MINIMO", prodActual);
+            }
+        });
+
+        return resultado;
     }
 
     // Realiza un ajuste manual de inventario segun conteo fisico
@@ -257,7 +267,7 @@ public class InventarioController {
             throw new ValidacionException("Debe especificar la justificacion o motivo del ajuste de inventario.");
         }
 
-        return TransaccionManager.ejecutarEnTransaccion(conn -> {
+        boolean resultado = TransaccionManager.ejecutarEnTransaccion(conn -> {
             Producto p = inventarioDAO.buscarProductoPorId(productoId)
                     .orElseThrow(() -> new ValidacionException("Producto no encontrado con ID: " + productoId));
 
@@ -289,6 +299,15 @@ public class InventarioController {
                     productoId, stockAnterior, nuevoStockFisico));
             return true;
         });
+
+        // Notificacion reactiva al patron Observer si el stock cayo al minimo o menor
+        inventarioDAO.buscarProductoPorId(productoId).ifPresent(prodActual -> {
+            if (prodActual.isBajoStockMinimo()) {
+                GestorEventos.getInstancia().notificar("INVENTARIO_STOCK_MINIMO", prodActual);
+            }
+        });
+
+        return resultado;
     }
 
     // Valida que un producto se encuentre apto para su dispensacion medica
