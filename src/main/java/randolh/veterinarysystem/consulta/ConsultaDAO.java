@@ -4,7 +4,9 @@ import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.config.TransaccionManager;
 import randolh.veterinarysystem.core.exception.BaseDatosException;
 import randolh.veterinarysystem.core.exception.InventarioException;
+import randolh.veterinarysystem.core.patterns.observer.GestorEventos;
 import randolh.veterinarysystem.core.utils.LoggerManager;
+import randolh.veterinarysystem.inventario.Producto;
 
 import java.sql.Connection;
 import java.sql.Date;
@@ -133,9 +135,10 @@ public class ConsultaDAO {
     // Deduce un medicamento prescrito validando stock y fecha de caducidad
     private void deducirMedicamentoPrescrito(Connection conn, int consultaId, Prescripcion p) throws SQLException {
         // Bloqueo y lectura del producto
-        String sqlCheck = "SELECT nombre_producto, cantidad_stock, fecha_vencimiento, activo FROM inventario WHERE id = ? FOR UPDATE";
+        String sqlCheck = "SELECT nombre_producto, cantidad_stock, stock_minimo, fecha_vencimiento, activo FROM inventario WHERE id = ? FOR UPDATE";
         String nombreProd;
         int stockActual;
+        int stockMinimo;
         Date fechaVenc;
         boolean activo;
 
@@ -147,6 +150,7 @@ public class ConsultaDAO {
                 }
                 nombreProd = rs.getString("nombre_producto");
                 stockActual = rs.getInt("cantidad_stock");
+                stockMinimo = rs.getInt("stock_minimo");
                 fechaVenc = rs.getDate("fecha_vencimiento");
                 activo = rs.getBoolean("activo");
             }
@@ -218,6 +222,16 @@ public class ConsultaDAO {
             stmt.setInt(6, consultaId);
             stmt.executeUpdate();
         }
+
+        // Notificar al patron Observer si cayo bajo el stock minimo
+        if (stockNuevo <= stockMinimo) {
+            Producto prodAlerta = new Producto();
+            prodAlerta.setId(p.getProductoId());
+            prodAlerta.setNombreProducto(nombreProd);
+            prodAlerta.setCantidadStock(stockNuevo);
+            prodAlerta.setStockMinimo(stockMinimo);
+            GestorEventos.getInstancia().notificar("INVENTARIO_STOCK_MINIMO", prodAlerta);
+        }
     }
 
     // ==========================================
@@ -288,9 +302,10 @@ public class ConsultaDAO {
 
     // Deduce insumo consumido en quirofano
     private void deducirInsumoQuirurgico(Connection conn, int procedimientoId, InsumoProcedimiento ins) throws SQLException {
-        String sqlCheck = "SELECT nombre_producto, cantidad_stock, fecha_vencimiento, activo FROM inventario WHERE id = ? FOR UPDATE";
+        String sqlCheck = "SELECT nombre_producto, cantidad_stock, stock_minimo, fecha_vencimiento, activo FROM inventario WHERE id = ? FOR UPDATE";
         String nombreProd;
         int stockActual;
+        int stockMinimo;
         Date fechaVenc;
         boolean activo;
 
@@ -302,6 +317,7 @@ public class ConsultaDAO {
                 }
                 nombreProd = rs.getString("nombre_producto");
                 stockActual = rs.getInt("cantidad_stock");
+                stockMinimo = rs.getInt("stock_minimo");
                 fechaVenc = rs.getDate("fecha_vencimiento");
                 activo = rs.getBoolean("activo");
             }
@@ -362,6 +378,16 @@ public class ConsultaDAO {
             stmt.setString(5, "Deduccion automatica por insumo quirurgico en procedimiento #" + procedimientoId);
             stmt.setInt(6, procedimientoId);
             stmt.executeUpdate();
+        }
+
+        // Notificar al patron Observer si cayo bajo el stock minimo
+        if (stockNuevo <= stockMinimo) {
+            Producto prodAlerta = new Producto();
+            prodAlerta.setId(ins.getProductoId());
+            prodAlerta.setNombreProducto(nombreProd);
+            prodAlerta.setCantidadStock(stockNuevo);
+            prodAlerta.setStockMinimo(stockMinimo);
+            GestorEventos.getInstancia().notificar("INVENTARIO_STOCK_MINIMO", prodAlerta);
         }
     }
 
