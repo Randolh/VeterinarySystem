@@ -205,6 +205,20 @@ public final class ConsolaUtils {
         }
     }
 
+    public static double leerDecimalOpcional(String prompt, double valorDefecto) {
+        System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
+        String entrada = SCANNER.nextLine().trim().replace(',', '.');
+        if (entrada.isEmpty()) {
+            return valorDefecto;
+        }
+        try {
+            return Double.parseDouble(entrada);
+        } catch (NumberFormatException e) {
+            imprimirAdvertencia("Valor invalido. Se utilizara el valor por defecto: " + valorDefecto);
+            return valorDefecto;
+        }
+    }
+
     public static LocalDate leerFecha(String prompt) {
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         while (true) {
