@@ -49,11 +49,13 @@ public class AlertaDAO {
                 "  INDEX idx_fecha (fecha_generacion)" +
                 ")";
 
-        Connection conn = ConexionBD.getInstancia().getConexion();
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-        } catch (SQLException e) {
-            LoggerManager.warning(MODULO, "No se pudo verificar/crear tabla alertas_sistema: " + e.getMessage());
+        try {
+            Connection conn = ConexionBD.getInstancia().getConexion();
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute(sql);
+            }
+        } catch (Exception e) {
+            LoggerManager.warning(MODULO, "No se pudo verificar/crear tabla alertas_sistema (posible modo offline): " + e.getMessage());
         }
     }
 
