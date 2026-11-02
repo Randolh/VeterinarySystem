@@ -176,15 +176,7 @@ public class ConsultaDAO {
 
         int stockNuevo = stockActual - p.getCantidad();
 
-        // Actualizar stock en inventario
-        String sqlUpdateStock = "UPDATE inventario SET cantidad_stock = ? WHERE id = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateStock)) {
-            stmt.setInt(1, stockNuevo);
-            stmt.setInt(2, p.getProductoId());
-            stmt.executeUpdate();
-        }
-
-        // Insertar prescripcion
+        // Insertar prescripcion (el trigger trg_deducir_stock_prescripcion deduce el stock y registra en kardex)
         String sqlPrescripcion = "INSERT INTO prescripciones (consulta_id, producto_id, cantidad, dosis, " +
                 "frecuencia, duracion_dias, instrucciones, fecha_prescripcion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sqlPrescripcion, Statement.RETURN_GENERATED_KEYS)) {
@@ -207,20 +199,6 @@ public class ConsultaDAO {
                     p.setId(rs.getInt(1));
                 }
             }
-        }
-
-        // Registrar movimiento de kardex
-        String sqlKardex = "INSERT INTO inventario_movimientos (producto_id, tipo_movimiento, cantidad, " +
-                "stock_anterior, stock_nuevo, motivo, referencia_consulta_id, usuario, fecha_hora) " +
-                "VALUES (?, 'Salida', ?, ?, ?, ?, ?, 'Sistema', NOW())";
-        try (PreparedStatement stmt = conn.prepareStatement(sqlKardex)) {
-            stmt.setInt(1, p.getProductoId());
-            stmt.setInt(2, p.getCantidad());
-            stmt.setInt(3, stockActual);
-            stmt.setInt(4, stockNuevo);
-            stmt.setString(5, "Deduccion automatica por prescripcion medica en consulta #" + consultaId);
-            stmt.setInt(6, consultaId);
-            stmt.executeUpdate();
         }
 
         // Notificar al patron Observer si cayo bajo el stock minimo
@@ -341,15 +319,7 @@ public class ConsultaDAO {
 
         int stockNuevo = stockActual - ins.getCantidadUsada();
 
-        // Actualizar stock
-        String sqlUpdateStock = "UPDATE inventario SET cantidad_stock = ? WHERE id = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateStock)) {
-            stmt.setInt(1, stockNuevo);
-            stmt.setInt(2, ins.getProductoId());
-            stmt.executeUpdate();
-        }
-
-        // Insertar registro de insumo
+        // Insertar registro de insumo (el trigger trg_deducir_stock_insumo_procedimiento deduce el stock y registra en kardex)
         String sqlInsumo = "INSERT INTO procedimiento_insumos (procedimiento_id, producto_id, cantidad_utilizada, observaciones) " +
                 "VALUES (?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sqlInsumo, Statement.RETURN_GENERATED_KEYS)) {
@@ -364,20 +334,6 @@ public class ConsultaDAO {
                     ins.setId(rs.getInt(1));
                 }
             }
-        }
-
-        // Registrar en kardex
-        String sqlKardex = "INSERT INTO inventario_movimientos (producto_id, tipo_movimiento, cantidad, " +
-                "stock_anterior, stock_nuevo, motivo, referencia_procedimiento_id, usuario, fecha_hora) " +
-                "VALUES (?, 'Salida', ?, ?, ?, ?, ?, 'Sistema', NOW())";
-        try (PreparedStatement stmt = conn.prepareStatement(sqlKardex)) {
-            stmt.setInt(1, ins.getProductoId());
-            stmt.setInt(2, ins.getCantidadUsada());
-            stmt.setInt(3, stockActual);
-            stmt.setInt(4, stockNuevo);
-            stmt.setString(5, "Deduccion automatica por insumo quirurgico en procedimiento #" + procedimientoId);
-            stmt.setInt(6, procedimientoId);
-            stmt.executeUpdate();
         }
 
         // Notificar al patron Observer si cayo bajo el stock minimo

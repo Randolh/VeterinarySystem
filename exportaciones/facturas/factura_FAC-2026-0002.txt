@@ -1,0 +1,24 @@
+================================================================================
+                         Clinica Veterinaria Happy Feet
+                  NIT: 900.123.456-7 | Tel: (+57) 300 123 4567
+                            Calle 123 #45-67, Bogota
+================================================================================
+ FACTURA ELECTRONICA DE VENTA: FAC-2026-0002             FECHA: 2026-11-02 12:22:09
+ ESTADO: Pagada                                METODO PAGO: Efectivo
+--------------------------------------------------------------------------------
+ DATOS DEL CLIENTE / DUENO:
+ Nombre Completo: Cliente E2E                         Documento: CC-1793643729023
+ Correo:          cliente.1793643729025@test.com      Telefono:  3119876543
+--------------------------------------------------------------------------------
+ ITEM | TIPO       | DESCRIPCION                      | CANT  | PRECIO U.  | SUBTOTAL  
+--------------------------------------------------------------------------------
+ 1    | Servicio   | Consulta Clinica                 | 1     | 50.00      | 50.00     
+ 2    | Producto   | Insumo Farmacia                  | 2     | 15.00      | 30.00     
+--------------------------------------------------------------------------------
+                                                   SUBTOTAL BRUTO: $      80.00
+                                                   IMPUESTO (IVA): $      15.20
+                                               TOTAL NETO A PAGAR: $      95.20
+================================================================================
+             GRACIAS POR CONFIAR EN NUESTROS SERVICIOS VETERINARIOS
+         Este documento es representacion digital de factura contable.
+================================================================================
