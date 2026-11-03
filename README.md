@@ -12,7 +12,7 @@
 1. [Descripción del Contexto](#descripción-del-contexto)
 2. [Tecnologías Utilizadas](#tecnologías-utilizadas)
 3. [Arquitectura y Patrones de Diseño](#arquitectura-y-patrones-de-diseño)
-4. [Funcionalidades Implementadas](#funcionalidades-implementadas)
+4. [Funcionalidades Implementadas](#funcionalidades-implementadas) *(Ver [Especificación de Requerimientos IEEE](docs/REQUERIMIENTOS.md))*
 5. [Modelo de la Base de Datos](#modelo-de-la-base-de-datos)
 6. [Instrucciones de Instalación y Configuración](#instrucciones-de-instalación-y-configuración)
    - [Requisitos Previos](#requisitos-previos)
