@@ -1,5 +1,6 @@
 package randolh.veterinarysystem.mascota;
 
+import randolh.veterinarysystem.consulta.ProcedimientoEspecial;
 import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.exception.ValidacionException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
@@ -337,6 +338,62 @@ public class MascotaView {
             pw.println(" ANTECEDENTES CLINICOS:");
             pw.printf(" Alergias      : %s%n", m.getAlergias() != null ? m.getAlergias() : "Ninguna reportada");
             pw.printf(" Condiciones   : %s%n", m.getCondicionesPreexistentes() != null ? m.getCondicionesPreexistentes() : "Sin condiciones preexistentes");
+            pw.println("--------------------------------------------------------------------------------");
+
+            DateTimeFormatter dtfFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter dtfHora = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            // 1. Historial de Vacunacion y Biologicos
+            List<MascotaDAO.VacunaHistorialItem> vacunas = controller.listarVacunasPorMascota(m.getId());
+            pw.println(" HISTORIAL DE VACUNACION Y BIOLOGICOS:");
+            pw.println("--------------------------------------------------------------------------------");
+            if (vacunas.isEmpty()) {
+                pw.println("  (No se registran vacunas aplicadas para este paciente)");
+            } else {
+                pw.printf("| %-10s | %-28s | %-12s | %-10s | %-20s |%n",
+                        "Fecha Apl.", "Vacuna / Biologico", "Lote", "Prox. Dosis", "Profesional");
+                pw.println("+------------+------------------------------+--------------+------------+----------------------+");
+                for (MascotaDAO.VacunaHistorialItem v : vacunas) {
+                    String fApl = v.getFechaAplicacion() != null ? v.getFechaAplicacion().format(dtfFecha) : "N/D";
+                    String fProx = v.getProximaDosis() != null ? v.getProximaDosis().format(dtfFecha) : "N/D";
+                    pw.printf("| %-10s | %-28s | %-12s | %-10s | %-20s |%n",
+                            fApl,
+                            truncar(v.getNombreVacuna(), 28),
+                            truncar(v.getLote(), 12),
+                            fProx,
+                            truncar(v.getVeterinario(), 20));
+                }
+            }
+            pw.println("--------------------------------------------------------------------------------");
+
+            // 2. Historial de Procedimientos Quirurgicos y Cirugias
+            List<ProcedimientoEspecial> cirugias = controller.listarProcedimientosPorMascota(m.getId());
+            pw.println(" HISTORIAL DE CIRUGIAS Y PROCEDIMIENTOS ESPECIALES:");
+            pw.println("--------------------------------------------------------------------------------");
+            if (cirugias.isEmpty()) {
+                pw.println("  (No se registran procedimientos quirurgicos para este paciente)");
+            } else {
+                pw.printf("| %-16s | %-32s | %-12s | %-20s |%n",
+                        "Fecha / Hora", "Procedimiento", "Estado", "Cirujano");
+                pw.println("+------------------+----------------------------------+--------------+----------------------+");
+                for (ProcedimientoEspecial p : cirugias) {
+                    String fProc = p.getFechaHora() != null ? p.getFechaHora().format(dtfHora) : "N/D";
+                    pw.printf("| %-16s | %-32s | %-12s | %-20s |%n",
+                            fProc,
+                            truncar(p.getNombreProcedimiento(), 32),
+                            p.getEstado() != null ? p.getEstado().getValorDb() : "N/D",
+                            truncar(p.getNombreVeterinario() != null ? p.getNombreVeterinario() : "No asignado", 20));
+                    if (p.getDetalleProcedimiento() != null && !p.getDetalleProcedimiento().trim().isEmpty()) {
+                        pw.println("   Detalle       : " + p.getDetalleProcedimiento());
+                    }
+                    if (p.getSeguimientoPostoperatorio() != null && !p.getSeguimientoPostoperatorio().trim().isEmpty()) {
+                        pw.println("   Postoperatorio: " + p.getSeguimientoPostoperatorio());
+                    }
+                    if (p.getProximoControl() != null) {
+                        pw.println("   Proximo Control: " + p.getProximoControl().format(dtfFecha));
+                    }
+                }
+            }
             pw.println("--------------------------------------------------------------------------------");
             pw.printf(" Fecha Emision : %s%n", LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             pw.println();

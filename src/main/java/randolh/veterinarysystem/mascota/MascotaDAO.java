@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,33 @@ import java.util.Optional;
 public class MascotaDAO {
 
     private static final String MODULO = "MascotaDAO";
+
+    // DTO para representar el registro de una vacuna en el historial
+    public static class VacunaHistorialItem {
+        private final LocalDate fechaAplicacion;
+        private final String nombreVacuna;
+        private final String lote;
+        private final LocalDate proximaDosis;
+        private final String veterinario;
+        private final String observaciones;
+
+        public VacunaHistorialItem(LocalDate fechaAplicacion, String nombreVacuna, String lote,
+                                  LocalDate proximaDosis, String veterinario, String observaciones) {
+            this.fechaAplicacion = fechaAplicacion;
+            this.nombreVacuna = nombreVacuna;
+            this.lote = lote;
+            this.proximaDosis = proximaDosis;
+            this.veterinario = veterinario;
+            this.observaciones = observaciones;
+        }
+
+        public LocalDate getFechaAplicacion() { return fechaAplicacion; }
+        public String getNombreVacuna() { return nombreVacuna; }
+        public String getLote() { return lote; }
+        public LocalDate getProximaDosis() { return proximaDosis; }
+        public String getVeterinario() { return veterinario; }
+        public String getObservaciones() { return observaciones; }
+    }
 
     // DTO simple para catalogo de especies y razas
     public static class CatalogoItem {
@@ -288,6 +316,72 @@ public class MascotaDAO {
         } catch (SQLException e) {
             LoggerManager.error(MODULO, "Error al consultar razas para especie " + especieId, e);
             throw new BaseDatosException("Error al consultar catalogo de razas: " + e.getMessage(), e);
+        }
+        return lista;
+    }
+
+    // Lista el historial consolidado de vacunas aplicadas a la mascota (jornadas y consultas clinicas)
+    public List<VacunaHistorialItem> listarVacunasPorMascota(int mascotaId) {
+        List<VacunaHistorialItem> lista = new ArrayList<>();
+        String sql = "SELECT fecha_aplicacion, vacuna_nombre, lote, proxima_dosis, veterinario, observaciones FROM (" +
+                "  SELECT DATE(r.fecha_hora) AS fecha_aplicacion, i.nombre_producto AS vacuna_nombre, " +
+                "         COALESCE(r.lote_vacuna, i.numero_lote, 'S/L') AS lote, r.proxima_dosis, " +
+                "         COALESCE(v.nombre_completo, 'Brigada Veterinaria') AS veterinario, " +
+                "         COALESCE(r.observaciones, 'Jornada de Vacunacion') AS observaciones " +
+                "  FROM registro_jornada_vacunacion r " +
+                "  INNER JOIN inventario i ON r.vacuna_id = i.id " +
+                "  LEFT JOIN veterinarios v ON r.veterinario_id = v.id " +
+                "  WHERE r.mascota_id = ? " +
+                "  UNION ALL " +
+                "  SELECT DATE(p.fecha_prescripcion) AS fecha_aplicacion, i.nombre_producto AS vacuna_nombre, " +
+                "         COALESCE(i.numero_lote, 'S/L') AS lote, " +
+                "         DATE_ADD(DATE(p.fecha_prescripcion), INTERVAL 1 YEAR) AS proxima_dosis, " +
+                "         COALESCE(v.nombre_completo, 'Clinica Veterinaria') AS veterinario, " +
+                "         COALESCE(p.instrucciones, 'Consulta Clinica') AS observaciones " +
+                "  FROM prescripciones p " +
+                "  INNER JOIN consultas_medicas c ON p.consulta_id = c.id " +
+                "  INNER JOIN inventario i ON p.producto_id = i.id " +
+                "  LEFT JOIN veterinarios v ON c.veterinario_id = v.id " +
+                "  WHERE c.mascota_id = ? AND i.tipo_id = 2 " +
+                "  UNION ALL " +
+                "  SELECT hm.fecha_evento AS fecha_aplicacion, " +
+                "         COALESCE(hm.tratamiento_recomendado, hm.descripcion) AS vacuna_nombre, " +
+                "         'S/L' AS lote, " +
+                "         DATE_ADD(hm.fecha_evento, INTERVAL 1 YEAR) AS proxima_dosis, " +
+                "         COALESCE(v.nombre_completo, 'Veterinario de Turno') AS veterinario, " +
+                "         hm.descripcion AS observaciones " +
+                "  FROM historial_medico hm " +
+                "  LEFT JOIN veterinarios v ON hm.veterinario_id = v.id " +
+                "  WHERE hm.mascota_id = ? AND hm.evento_tipo_id = 1 " +
+                "    AND hm.consulta_id NOT IN ( " +
+                "        SELECT COALESCE(p2.consulta_id, 0) FROM prescripciones p2 " +
+                "        INNER JOIN inventario i2 ON p2.producto_id = i2.id WHERE i2.tipo_id = 2 " +
+                "    ) " +
+                ") AS vacunas_unificadas " +
+                "ORDER BY fecha_aplicacion DESC";
+
+        Connection conn = ConexionBD.getInstancia().getConexion();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, mascotaId);
+            stmt.setInt(2, mascotaId);
+            stmt.setInt(3, mascotaId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Date fAp = rs.getDate("fecha_aplicacion");
+                    Date fProx = rs.getDate("proxima_dosis");
+                    lista.add(new VacunaHistorialItem(
+                            fAp != null ? fAp.toLocalDate() : null,
+                            rs.getString("vacuna_nombre"),
+                            rs.getString("lote"),
+                            fProx != null ? fProx.toLocalDate() : null,
+                            rs.getString("veterinario"),
+                            rs.getString("observaciones")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            LoggerManager.error(MODULO, "Error al listar vacunas de mascota ID: " + mascotaId, e);
+            throw new BaseDatosException("Error al consultar historial de vacunas: " + e.getMessage(), e);
         }
         return lista;
     }
