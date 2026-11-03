@@ -65,7 +65,6 @@ public class DuenoView {
         ConsolaUtils.imprimirSubtitulo("Registrar Nuevo Dueno / Cliente");
 
         try {
-            String tipoDoc = ConsolaUtils.leerTextoOpcional("Tipo de documento (CC, CE, PAS, TI, NIT)", "CC").toUpperCase();
             String numDoc = ConsolaUtils.leerTextoObligatorio("Numero de documento: ", 20);
             String nombre = ConsolaUtils.leerTextoObligatorio("Nombre completo: ", 150);
             String telefono = ConsolaUtils.leerTextoObligatorio("Numero de telefono: ", 20);
@@ -73,12 +72,14 @@ public class DuenoView {
             String direccion = ConsolaUtils.leerTextoConLimite("Direccion de residencia (opcional): ", 255);
             String contactoEmergencia = ConsolaUtils.leerTextoConLimite("Contacto de emergencia (nombre/telefono opcional): ", 100);
 
-            Dueno nuevo = new Dueno(tipoDoc, numDoc, nombre, direccion.isEmpty() ? null : direccion,
+            Dueno nuevo = new Dueno(null, numDoc, nombre, direccion.isEmpty() ? null : direccion,
                     telefono, email, contactoEmergencia.isEmpty() ? null : contactoEmergencia);
 
             Dueno registrado = controller.registrarDueno(nuevo);
-            ConsolaUtils.imprimirExito(String.format("Cliente registrado exitosamente con ID: %d (%s %s)",
-                    registrado.getId(), registrado.getTipoDocumento(), registrado.getNumeroDocumento()));
+            String docInfo = (registrado.getTipoDocumento() != null ? registrado.getTipoDocumento() + " " : "")
+                    + registrado.getNumeroDocumento();
+            ConsolaUtils.imprimirExito(String.format("Cliente registrado exitosamente con ID: %d (%s)",
+                    registrado.getId(), docInfo));
 
         } catch (ValidacionException e) {
             ConsolaUtils.imprimirError("Error de validacion: " + e.getMessage());
