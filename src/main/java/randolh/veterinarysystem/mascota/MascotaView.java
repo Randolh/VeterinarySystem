@@ -107,7 +107,7 @@ public class MascotaView {
                 razaId = ConsolaUtils.leerEntero("Seleccione el ID de la raza: ");
             }
 
-            LocalDate fechaNac = ConsolaUtils.leerFecha("Fecha de nacimiento");
+            LocalDate fechaNac = capturarFechaNacimientoOEdadEstimada();
             boolean esHembra = ConsolaUtils.leerBooleano("El paciente es Hembra?");
             SexoEnum sexo = esHembra ? SexoEnum.HEMBRA : SexoEnum.MACHO;
 
@@ -143,6 +143,27 @@ public class MascotaView {
         } catch (Exception e) {
             ConsolaUtils.imprimirError("Error al registrar paciente: " + e.getMessage());
         }
+    }
+
+    // Captura fecha exacta o calcula la fecha a partir de edad estimada en anos y meses
+    private LocalDate capturarFechaNacimientoOEdadEstimada() {
+        boolean conoceFecha = ConsolaUtils.leerBooleano("¿Conoce la fecha exacta de nacimiento del paciente?");
+        if (conoceFecha) {
+            return ConsolaUtils.leerFecha("Fecha de nacimiento");
+        }
+
+        System.out.println(ConsolaUtils.ANSI_CYAN + "Estimacion de edad del paciente:" + ConsolaUtils.ANSI_RESET);
+        int anios = ConsolaUtils.leerEnteroEnRango("Edad estimada en anos (0 a 30): ", 0, 30);
+        int meses = ConsolaUtils.leerEnteroEnRango("Meses adicionales (0 a 11): ", 0, 11);
+
+        LocalDate fechaCalculada;
+        if (anios == 0 && meses == 0) {
+            fechaCalculada = LocalDate.now();
+        } else {
+            fechaCalculada = LocalDate.now().minusYears(anios).minusMonths(meses);
+        }
+        ConsolaUtils.imprimirInfo("Fecha aproximada calculada: " + fechaCalculada);
+        return fechaCalculada;
     }
 
     // Listado tabular paginado de pacientes
