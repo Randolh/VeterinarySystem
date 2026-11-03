@@ -1,6 +1,7 @@
 package randolh.veterinarysystem;
 
 import randolh.veterinarysystem.actividad.ActividadView;
+import randolh.veterinarysystem.alerta.AlertaController;
 import randolh.veterinarysystem.alerta.AlertaView;
 import randolh.veterinarysystem.cita.CitaView;
 import randolh.veterinarysystem.consulta.ConsultaView;
@@ -29,6 +30,7 @@ public class MenuPrincipal {
     private ConsultaView consultaView;
     private InventarioView inventarioView;
     private AlertaView alertaView;
+    private AlertaController alertaController;
     private FacturacionView facturacionView;
     private ActividadView actividadView;
     private ReporteView reporteView;
@@ -68,8 +70,13 @@ public class MenuPrincipal {
         return inventarioView;
     }
 
+    private AlertaController getAlertaController() {
+        if (alertaController == null) alertaController = new AlertaController();
+        return alertaController;
+    }
+
     private AlertaView getAlertaView() {
-        if (alertaView == null) alertaView = new AlertaView();
+        if (alertaView == null) alertaView = new AlertaView(getAlertaController());
         return alertaView;
     }
 
@@ -99,9 +106,21 @@ public class MenuPrincipal {
             boolean online = ConexionBD.getInstancia().probarConectividad();
             ConsolaUtils.imprimirTitulo("SISTEMA DE GESTION INTEGRAL VETERINARIA HAPPY FEET");
 
-            // Indicador de modo en linea o fuera de linea
+            int alertasPendientes = 0;
             if (online) {
-                System.out.println(ConsolaUtils.COLOR_EXITO + "[ESTADO: ONLINE - BASE DE DATOS OPERATIVA]" + ConsolaUtils.ANSI_RESET);
+                try {
+                    alertasPendientes = getAlertaController().contarAlertasPendientes();
+                } catch (Exception ignored) {}
+            }
+
+            // Indicador de modo en linea o fuera de linea y notificaciones
+            if (online) {
+                System.out.print(ConsolaUtils.COLOR_EXITO + "[ESTADO: ONLINE - BASE DE DATOS OPERATIVA]" + ConsolaUtils.ANSI_RESET);
+                if (alertasPendientes > 0) {
+                    System.out.println(ConsolaUtils.COLOR_ERROR + "  [!] TIENE " + alertasPendientes + " NOTIFICACION(ES) PENDIENTE(S)" + ConsolaUtils.ANSI_RESET);
+                } else {
+                    System.out.println(ConsolaUtils.COLOR_BORDE + "  [Sin notificaciones pendientes]" + ConsolaUtils.ANSI_RESET);
+                }
             } else {
                 System.out.println(ConsolaUtils.COLOR_ADVERTENCIA + "[ESTADO: OFFLINE - MODO FUERA DE LINEA / CONEXION BD INACTIVA]" + ConsolaUtils.ANSI_RESET);
             }
@@ -112,7 +131,10 @@ public class MenuPrincipal {
             System.out.println(ConsolaUtils.COLOR_INFO + "3.  Modulo de Servicios Medicos y Citas (Agenda)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "4.  Modulo de Consultas Medicas y Quirofano (Cirugias y Deduccion)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "5.  Modulo de Inventario, Farmacia y Proveedores" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "6.  Modulo de Alertas del Sistema y Notificaciones" + ConsolaUtils.ANSI_RESET);
+
+            String badgeAlerta = (online && alertasPendientes > 0) ?
+                    ConsolaUtils.COLOR_ERROR + " [" + alertasPendientes + " PENDIENTES]" + ConsolaUtils.ANSI_RESET : "";
+            System.out.println(ConsolaUtils.COLOR_INFO + "6.  Modulo de Alertas del Sistema y Notificaciones" + badgeAlerta + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "7.  Modulo de Facturacion y Finanzas" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "8.  Modulo de Actividades Especiales (Adopciones, Jornadas y Club)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "9.  Modulo de Reportes Gerenciales e Inteligencia de Negocio" + ConsolaUtils.ANSI_RESET);
