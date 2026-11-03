@@ -6,9 +6,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 // Utilitario de consola sin emojis con paleta ANSI, NO_COLOR y lectura segura
 public final class ConsolaUtils {
@@ -75,18 +77,72 @@ public final class ConsolaUtils {
         return BG_CYAN + ANSI_WHITE + " " + texto + " " + ANSI_RESET;
     }
 
-    // Metodos de impresion estandarizados
+    private static final Pattern PATRON_ANSI = Pattern.compile("\\u001B\\[[;?0-9]*[a-zA-Z]");
+
+    // Retorna la longitud visible de un texto ignorando secuencias de escape ANSI
+    public static int longitudVisible(String texto) {
+        if (texto == null || texto.isEmpty()) return 0;
+        return PATRON_ANSI.matcher(texto).replaceAll("").length();
+    }
+
+    // Divide un titulo largo respetando palabras y saltos de linea explicitos
+    private static List<String> ajustarLineas(String texto, int maxLongitud) {
+        List<String> resultado = new ArrayList<>();
+        if (texto == null || texto.isEmpty()) {
+            resultado.add("");
+            return resultado;
+        }
+
+        String[] lineasCrudas = texto.split("\\r?\\n");
+        for (String lineaCruda : lineasCrudas) {
+            if (longitudVisible(lineaCruda) <= maxLongitud) {
+                resultado.add(lineaCruda);
+                continue;
+            }
+
+            String[] palabras = lineaCruda.split(" ");
+            StringBuilder lineaActual = new StringBuilder();
+
+            for (String palabra : palabras) {
+                if (palabra.isEmpty()) continue;
+                if (lineaActual.length() == 0) {
+                    lineaActual.append(palabra);
+                } else if (longitudVisible(lineaActual.toString()) + 1 + longitudVisible(palabra) <= maxLongitud) {
+                    lineaActual.append(" ").append(palabra);
+                } else {
+                    resultado.add(lineaActual.toString());
+                    lineaActual = new StringBuilder(palabra);
+                }
+            }
+            if (lineaActual.length() > 0) {
+                resultado.add(lineaActual.toString());
+            }
+        }
+
+        return resultado.isEmpty() ? List.of("") : resultado;
+    }
+
+    // Metodos de impresion estandarizados con ancho uniforme (76 columnas) y soporte multilinea
     public static void imprimirTitulo(String titulo) {
+        if (titulo == null) titulo = "";
+
+        int maxTextoAncho = 68;
+        List<String> lineas = ajustarLineas(titulo, maxTextoAncho);
+
+        // Mantiene el ancho estandar de 76 columnas para que los textos cortos mantengan
+        // presencia visual y alineacion exacta con las opciones del menu
         int ancho = 76;
         String borde = "+" + "-".repeat(ancho - 2) + "+";
-        String texto = titulo.length() > ancho - 6 ? titulo.substring(0, ancho - 6) : titulo;
-        int espaciosTotales = (ancho - 2) - texto.length();
-        int izq = espaciosTotales / 2;
-        int der = espaciosTotales - izq;
 
         System.out.println();
         System.out.println(COLOR_BORDE + borde + ANSI_RESET);
-        System.out.println(COLOR_BORDE + "|" + " ".repeat(izq) + COLOR_TITULO + texto + ANSI_RESET + COLOR_BORDE + " ".repeat(der) + "|" + ANSI_RESET);
+        for (String l : lineas) {
+            int visible = longitudVisible(l);
+            int espaciosTotales = (ancho - 2) - visible;
+            int izq = Math.max(0, espaciosTotales / 2);
+            int der = Math.max(0, espaciosTotales - izq);
+            System.out.println(COLOR_BORDE + "|" + " ".repeat(izq) + COLOR_TITULO + l + ANSI_RESET + COLOR_BORDE + " ".repeat(der) + "|" + ANSI_RESET);
+        }
         System.out.println(COLOR_BORDE + borde + ANSI_RESET);
     }
 
