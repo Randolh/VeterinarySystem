@@ -325,7 +325,7 @@ public class MascotaDAO {
         List<VacunaHistorialItem> lista = new ArrayList<>();
         String sql = "SELECT fecha_aplicacion, vacuna_nombre, lote, proxima_dosis, veterinario, observaciones FROM (" +
                 "  SELECT DATE(r.fecha_hora) AS fecha_aplicacion, i.nombre_producto AS vacuna_nombre, " +
-                "         COALESCE(r.lote_vacuna, i.numero_lote, 'S/L') AS lote, r.proxima_dosis, " +
+                "         COALESCE(r.lote_vacuna, i.lote, 'S/L') AS lote, r.proxima_dosis, " +
                 "         COALESCE(v.nombre_completo, 'Brigada Veterinaria') AS veterinario, " +
                 "         COALESCE(r.observaciones, 'Jornada de Vacunacion') AS observaciones " +
                 "  FROM registro_jornada_vacunacion r " +
@@ -334,7 +334,7 @@ public class MascotaDAO {
                 "  WHERE r.mascota_id = ? " +
                 "  UNION ALL " +
                 "  SELECT DATE(p.fecha_prescripcion) AS fecha_aplicacion, i.nombre_producto AS vacuna_nombre, " +
-                "         COALESCE(i.numero_lote, 'S/L') AS lote, " +
+                "         COALESCE(i.lote, 'S/L') AS lote, " +
                 "         DATE_ADD(DATE(p.fecha_prescripcion), INTERVAL 1 YEAR) AS proxima_dosis, " +
                 "         COALESCE(v.nombre_completo, 'Clinica Veterinaria') AS veterinario, " +
                 "         COALESCE(p.instrucciones, 'Consulta Clinica') AS observaciones " +
