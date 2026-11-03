@@ -1,5 +1,7 @@
 package randolh.veterinarysystem.core.utils;
 
+import randolh.veterinarysystem.core.exception.OperacionCanceladaException;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -91,6 +93,9 @@ public final class ConsolaUtils {
     public static void imprimirSubtitulo(String subtitulo) {
         System.out.println();
         System.out.println(COLOR_TITULO + "--- " + subtitulo + " ---" + ANSI_RESET);
+        if (subtitulo != null && !subtitulo.startsWith("Pagina ")) {
+            System.out.println(ANSI_GRAY + "(Escriba 'cancelar' o ':c' en cualquier momento para abortar y volver al menu)" + ANSI_RESET);
+        }
     }
 
     public static void imprimirExito(String mensaje) {
@@ -98,7 +103,24 @@ public final class ConsolaUtils {
     }
 
     public static void imprimirError(String mensaje) {
+        if (mensaje != null && mensaje.contains("Operacion cancelada por el usuario")) {
+            imprimirAdvertencia("Operacion cancelada por el usuario. Regresando al menu anterior...");
+            return;
+        }
         System.out.println(COLOR_ERROR + "[ERROR] " + mensaje + ANSI_RESET);
+    }
+
+    // Valida si el texto ingresado corresponde a un comando de cancelacion de formulario
+    public static boolean esComandoCancelar(String entrada) {
+        if (entrada == null) return false;
+        String val = entrada.trim().toLowerCase();
+        return val.equals("cancelar") || val.equals(":c") || val.equals("cancel") || val.equals("/cancel") || val.equals(":q");
+    }
+
+    public static void verificarCancelacion(String entrada) {
+        if (esComandoCancelar(entrada)) {
+            throw new OperacionCanceladaException("Operacion cancelada por el usuario.");
+        }
     }
 
     public static void imprimirAdvertencia(String mensaje) {
@@ -130,12 +152,15 @@ public final class ConsolaUtils {
     // Metodos de lectura segura
     public static String leerTexto(String prompt) {
         System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
-        return SCANNER.nextLine().trim();
+        String entrada = SCANNER.nextLine().trim();
+        verificarCancelacion(entrada);
+        return entrada;
     }
 
     public static String leerTextoOpcional(String prompt, String valorDefecto) {
         System.out.printf("%s%s [%s]: %s", ANSI_WHITE, prompt, valorDefecto, ANSI_RESET);
         String entrada = SCANNER.nextLine().trim();
+        verificarCancelacion(entrada);
         return entrada.isEmpty() ? valorDefecto : entrada;
     }
 
@@ -163,6 +188,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             try {
                 return Integer.parseInt(entrada);
             } catch (NumberFormatException e) {
@@ -187,6 +213,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim().replace(',', '.');
+            verificarCancelacion(entrada);
             try {
                 return Double.parseDouble(entrada);
             } catch (NumberFormatException e) {
@@ -208,6 +235,7 @@ public final class ConsolaUtils {
     public static double leerDecimalOpcional(String prompt, double valorDefecto) {
         System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
         String entrada = SCANNER.nextLine().trim().replace(',', '.');
+        verificarCancelacion(entrada);
         if (entrada.isEmpty()) {
             return valorDefecto;
         }
@@ -224,6 +252,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (YYYY-MM-DD): " + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             try {
                 return LocalDate.parse(entrada, formato);
             } catch (DateTimeParseException e) {
@@ -237,6 +266,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (YYYY-MM-DD o Enter para omitir): " + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             if (entrada.isEmpty()) {
                 return null;
             }
@@ -253,6 +283,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (HH:mm, 24 horas): " + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             try {
                 return LocalTime.parse(entrada, formato);
             } catch (DateTimeParseException e) {
@@ -264,11 +295,13 @@ public final class ConsolaUtils {
     public static boolean leerBooleano(String prompt) {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (S/N): " + ANSI_RESET);
-            String entrada = SCANNER.nextLine().trim().toUpperCase();
-            if (entrada.equals("S") || entrada.equals("SI") || entrada.equals("Y") || entrada.equals("YES")) {
+            String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
+            String norm = entrada.toUpperCase();
+            if (norm.equals("S") || norm.equals("SI") || norm.equals("Y") || norm.equals("YES")) {
                 return true;
             }
-            if (entrada.equals("N") || entrada.equals("NO")) {
+            if (norm.equals("N") || norm.equals("NO")) {
                 return false;
             }
             imprimirError("Respuesta invalida. Ingrese 'S' para Si o 'N' para No.");

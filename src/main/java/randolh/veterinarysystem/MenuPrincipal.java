@@ -6,6 +6,7 @@ import randolh.veterinarysystem.cita.CitaView;
 import randolh.veterinarysystem.consulta.ConsultaView;
 import randolh.veterinarysystem.core.config.ConfiguradorConsola;
 import randolh.veterinarysystem.core.config.ConexionBD;
+import randolh.veterinarysystem.core.exception.OperacionCanceladaException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 import randolh.veterinarysystem.dueno.DuenoView;
@@ -164,6 +165,8 @@ public class MenuPrincipal {
 
         try {
             accionModulo.run();
+        } catch (OperacionCanceladaException e) {
+            ConsolaUtils.imprimirAdvertencia(e.getMessage() + " Regresando al menu principal...");
         } catch (Exception e) {
             LoggerManager.error(MODULO, "Error no capturado durante la ejecucion del modulo", e);
             ConsolaUtils.imprimirError("Ocurrio un problema al ejecutar la operacion: " + e.getMessage());
