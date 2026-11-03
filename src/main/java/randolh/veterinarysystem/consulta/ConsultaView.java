@@ -3,6 +3,8 @@ package randolh.veterinarysystem.consulta;
 import randolh.veterinarysystem.core.exception.InventarioException;
 import randolh.veterinarysystem.core.exception.ValidacionException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
+import randolh.veterinarysystem.facturacion.FacturacionView;
+import randolh.veterinarysystem.facturacion.ItemFactura;
 import randolh.veterinarysystem.inventario.InventarioDAO;
 import randolh.veterinarysystem.inventario.Producto;
 import randolh.veterinarysystem.mascota.Mascota;
@@ -27,12 +29,14 @@ public class ConsultaView {
     private final MascotaDAO mascotaDAO;
     private final VeterinarioDAO veterinarioDAO;
     private final InventarioDAO inventarioDAO;
+    private final FacturacionView facturacionView;
 
     public ConsultaView() {
         this.controller = new ConsultaController();
         this.mascotaDAO = new MascotaDAO();
         this.veterinarioDAO = new VeterinarioDAO();
         this.inventarioDAO = new InventarioDAO();
+        this.facturacionView = new FacturacionView();
     }
 
     public ConsultaView(ConsultaController controller, MascotaDAO mascotaDAO,
@@ -41,6 +45,17 @@ public class ConsultaView {
         this.mascotaDAO = mascotaDAO;
         this.veterinarioDAO = veterinarioDAO;
         this.inventarioDAO = inventarioDAO;
+        this.facturacionView = new FacturacionView();
+    }
+
+    public ConsultaView(ConsultaController controller, MascotaDAO mascotaDAO,
+                        VeterinarioDAO veterinarioDAO, InventarioDAO inventarioDAO,
+                        FacturacionView facturacionView) {
+        this.controller = controller;
+        this.mascotaDAO = mascotaDAO;
+        this.veterinarioDAO = veterinarioDAO;
+        this.inventarioDAO = inventarioDAO;
+        this.facturacionView = facturacionView;
     }
 
     // Menu principal del modulo clinico y quirurgico
@@ -162,6 +177,11 @@ public class ConsultaView {
                 ConsolaUtils.imprimirInfo("Se dedujeron " + prescripciones.size() + " medicamentos del inventario correctamente.");
             }
 
+            boolean facturarAhora = ConsolaUtils.leerBooleano("¿Desea generar la factura de esta atencion en este momento?");
+            if (facturarAhora) {
+                procederFacturacionConsulta(m, guardada, prescripciones);
+            }
+
         } catch (ValidacionException | InventarioException e) {
             ConsolaUtils.imprimirAdvertencia(e.getMessage());
         } catch (Exception e) {
@@ -235,6 +255,11 @@ public class ConsultaView {
             ConsolaUtils.imprimirExito("Procedimiento quirurgico registrado exitosamente con ID: " + guardado.getId());
             if (!insumos.isEmpty()) {
                 ConsolaUtils.imprimirInfo("Se dedujeron " + insumos.size() + " insumos del inventario de forma atomica.");
+            }
+
+            boolean facturarAhora = ConsolaUtils.leerBooleano("¿Desea generar la factura de este procedimiento en este momento?");
+            if (facturarAhora) {
+                procederFacturacionProcedimiento(m, guardado, insumos);
             }
 
         } catch (ValidacionException | InventarioException e) {
@@ -422,5 +447,44 @@ public class ConsultaView {
     private String truncar(String texto, int max) {
         if (texto == null) return "-";
         return texto.length() <= max ? texto : texto.substring(0, max - 3) + "...";
+    }
+
+    // Inicia el flujo de facturacion directa para una consulta clinica
+    private void procederFacturacionConsulta(Mascota m, ConsultaMedica c, List<Prescripcion> prescripciones) {
+        List<ItemFactura> items = new ArrayList<>();
+        // Servicio: Consulta Medica General (Servicio ID 1 en catalogo, precio base 35.00)
+        items.add(ItemFactura.paraServicio(1, "Consulta Medica General - Paciente: " + m.getNombre(), 1, BigDecimal.valueOf(35.00)));
+
+        // Medicamentos prescritos
+        if (prescripciones != null) {
+            for (Prescripcion p : prescripciones) {
+                Optional<Producto> prodOpt = inventarioDAO.buscarProductoPorId(p.getProductoId());
+                if (prodOpt.isPresent()) {
+                    Producto prod = prodOpt.get();
+                    items.add(ItemFactura.paraProducto(prod.getId(), prod.getNombreProducto(), p.getCantidad(), prod.getPrecioVenta()));
+                }
+            }
+        }
+
+        facturacionView.emitirFacturaConItemsPredefinidos(
+                m.getDuenoId(),
+                items,
+                "Consulta medica #" + c.getId() + " - Paciente: " + m.getNombre()
+        );
+    }
+
+    // Inicia el flujo de facturacion directa para un procedimiento quirurgico
+    private void procederFacturacionProcedimiento(Mascota m, ProcedimientoEspecial p, List<InsumoProcedimiento> insumos) {
+        List<ItemFactura> items = new ArrayList<>();
+        // Concepto principal del procedimiento quirurgico con su costo
+        String desc = p.getNombreProcedimiento() + " (" + p.getTipoProcedimiento() + ") - Paciente: " + m.getNombre();
+        BigDecimal costo = p.getCostoProcedimiento() != null ? p.getCostoProcedimiento() : BigDecimal.ZERO;
+        items.add(ItemFactura.paraServicio(null, desc, 1, costo));
+
+        facturacionView.emitirFacturaConItemsPredefinidos(
+                m.getDuenoId(),
+                items,
+                "Procedimiento especial #" + p.getId() + " (" + p.getNombreProcedimiento() + ") - Paciente: " + m.getNombre()
+        );
     }
 }
