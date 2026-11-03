@@ -107,7 +107,7 @@ public class MenuPrincipal {
             }
             System.out.println(ConsolaUtils.COLOR_BORDE + "----------------------------------------------------------------------------" + ConsolaUtils.ANSI_RESET);
 
-            System.out.println(ConsolaUtils.COLOR_INFO + "1.  Modulo de Gestion de Pacientes (Mascotas y Duenos)" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "1.  Modulo de Gestion de Mascotas y Duenos" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "2.  Modulo de Personal Veterinario" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "3.  Modulo de Servicios Medicos y Citas (Agenda)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "4.  Modulo de Consultas Medicas y Quirofano (Cirugias y Deduccion)" + ConsolaUtils.ANSI_RESET);
@@ -174,11 +174,11 @@ public class MenuPrincipal {
         }
     }
 
-    // Submenu para alternar entre mascotas/pacientes y duenos/tutores
+    // Submenu para alternar entre mascotas y duenos
     private void mostrarSubmenuPacientes() {
         Runnable submenu = () -> {
-            ConsolaUtils.imprimirTitulo("GESTION DE PACIENTES Y PROPIETARIOS");
-            System.out.println(ConsolaUtils.COLOR_INFO + "1. Gestion Clinica de Pacientes (Mascotas, Historias, Carnet PDF)" + ConsolaUtils.ANSI_RESET);
+            ConsolaUtils.imprimirTitulo("GESTION DE MASCOTAS Y PROPIETARIOS");
+            System.out.println(ConsolaUtils.COLOR_INFO + "1. Gestion de Mascotas (Historias, Carnet de Salud)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "2. Gestion de Tutores y Propietarios (Duenos, Contacto)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_BORDE + "0. Volver al Menu Principal" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_BORDE + "----------------------------------------------------------------------------" + ConsolaUtils.ANSI_RESET);

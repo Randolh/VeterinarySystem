@@ -29,7 +29,7 @@ public class FacturacionView {
     public void mostrarMenu() {
         Runnable menu = () -> {
             ConsolaUtils.imprimirTitulo("MODULO DE FACTURACION Y LIQUIDACION FISCAL");
-            System.out.println(ConsolaUtils.COLOR_INFO + "1. Emitir nueva factura de venta (Strategy Club + PDF)" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "1. Emitir nueva factura de venta" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "2. Listar todas las facturas emitidas (tabla paginada)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "3. Consultar detalle de factura por ID o Numero" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "4. Reimprimir / exportar comprobantes (PDF y Texto plano)" + ConsolaUtils.ANSI_RESET);
