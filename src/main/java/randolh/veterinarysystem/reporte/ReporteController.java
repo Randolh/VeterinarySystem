@@ -1,6 +1,8 @@
 package randolh.veterinarysystem.reporte;
 
-import randolh.veterinarysystem.core.utils.PdfExportador;
+import randolh.veterinarysystem.core.exportador.ExportadorFactory;
+import randolh.veterinarysystem.core.exportador.FormatoExportacion;
+import randolh.veterinarysystem.core.exportador.reporte.ReporteExportData;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -152,7 +154,7 @@ public class ReporteController {
                 ))
                 .collect(Collectors.toList());
 
-        return PdfExportador.exportarReporteGenerico(titulo, cabeceras, filas);
+        return exportarReporte(titulo, cabeceras, filas);
     }
 
     // Exporta desempeno de veterinarios a PDF formal
@@ -177,7 +179,7 @@ public class ReporteController {
                 ))
                 .collect(Collectors.toList());
 
-        return PdfExportador.exportarReporteGenerico(titulo, cabeceras, filas);
+        return exportarReporte(titulo, cabeceras, filas);
     }
 
     // Exporta alertas criticas de inventario a PDF formal
@@ -204,7 +206,7 @@ public class ReporteController {
                 ))
                 .collect(Collectors.toList());
 
-        return PdfExportador.exportarReporteGenerico(titulo, cabeceras, filas);
+        return exportarReporte(titulo, cabeceras, filas);
     }
 
     // Exporta resumen mensual de facturacion a PDF formal
@@ -231,6 +233,11 @@ public class ReporteController {
                 ))
                 .collect(Collectors.toList());
 
-        return PdfExportador.exportarReporteGenerico(titulo, cabeceras, filas);
+        return exportarReporte(titulo, cabeceras, filas);
+    }
+
+    private String exportarReporte(String titulo, List<String> cabeceras, List<List<String>> filas) {
+        ReporteExportData data = new ReporteExportData(titulo, cabeceras, filas);
+        return ExportadorFactory.getExportadorReporte(FormatoExportacion.PDF).exportar(data);
     }
 }
