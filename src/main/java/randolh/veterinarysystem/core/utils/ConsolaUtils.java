@@ -1,12 +1,16 @@
 package randolh.veterinarysystem.core.utils;
 
+import randolh.veterinarysystem.core.exception.OperacionCanceladaException;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 // Utilitario de consola sin emojis con paleta ANSI, NO_COLOR y lectura segura
 public final class ConsolaUtils {
@@ -73,24 +77,81 @@ public final class ConsolaUtils {
         return BG_CYAN + ANSI_WHITE + " " + texto + " " + ANSI_RESET;
     }
 
-    // Metodos de impresion estandarizados
+    private static final Pattern PATRON_ANSI = Pattern.compile("\\u001B\\[[;?0-9]*[a-zA-Z]");
+
+    // Retorna la longitud visible de un texto ignorando secuencias de escape ANSI
+    public static int longitudVisible(String texto) {
+        if (texto == null || texto.isEmpty()) return 0;
+        return PATRON_ANSI.matcher(texto).replaceAll("").length();
+    }
+
+    // Divide un titulo largo respetando palabras y saltos de linea explicitos
+    private static List<String> ajustarLineas(String texto, int maxLongitud) {
+        List<String> resultado = new ArrayList<>();
+        if (texto == null || texto.isEmpty()) {
+            resultado.add("");
+            return resultado;
+        }
+
+        String[] lineasCrudas = texto.split("\\r?\\n");
+        for (String lineaCruda : lineasCrudas) {
+            if (longitudVisible(lineaCruda) <= maxLongitud) {
+                resultado.add(lineaCruda);
+                continue;
+            }
+
+            String[] palabras = lineaCruda.split(" ");
+            StringBuilder lineaActual = new StringBuilder();
+
+            for (String palabra : palabras) {
+                if (palabra.isEmpty()) continue;
+                if (lineaActual.length() == 0) {
+                    lineaActual.append(palabra);
+                } else if (longitudVisible(lineaActual.toString()) + 1 + longitudVisible(palabra) <= maxLongitud) {
+                    lineaActual.append(" ").append(palabra);
+                } else {
+                    resultado.add(lineaActual.toString());
+                    lineaActual = new StringBuilder(palabra);
+                }
+            }
+            if (lineaActual.length() > 0) {
+                resultado.add(lineaActual.toString());
+            }
+        }
+
+        return resultado.isEmpty() ? List.of("") : resultado;
+    }
+
+    // Metodos de impresion estandarizados con ancho uniforme (76 columnas) y soporte multilinea
     public static void imprimirTitulo(String titulo) {
+        if (titulo == null) titulo = "";
+
+        int maxTextoAncho = 68;
+        List<String> lineas = ajustarLineas(titulo, maxTextoAncho);
+
+        // Mantiene el ancho estandar de 76 columnas para que los textos cortos mantengan
+        // presencia visual y alineacion exacta con las opciones del menu
         int ancho = 76;
         String borde = "+" + "-".repeat(ancho - 2) + "+";
-        String texto = titulo.length() > ancho - 6 ? titulo.substring(0, ancho - 6) : titulo;
-        int espaciosTotales = (ancho - 2) - texto.length();
-        int izq = espaciosTotales / 2;
-        int der = espaciosTotales - izq;
 
         System.out.println();
         System.out.println(COLOR_BORDE + borde + ANSI_RESET);
-        System.out.println(COLOR_BORDE + "|" + " ".repeat(izq) + COLOR_TITULO + texto + ANSI_RESET + COLOR_BORDE + " ".repeat(der) + "|" + ANSI_RESET);
+        for (String l : lineas) {
+            int visible = longitudVisible(l);
+            int espaciosTotales = (ancho - 2) - visible;
+            int izq = Math.max(0, espaciosTotales / 2);
+            int der = Math.max(0, espaciosTotales - izq);
+            System.out.println(COLOR_BORDE + "|" + " ".repeat(izq) + COLOR_TITULO + l + ANSI_RESET + COLOR_BORDE + " ".repeat(der) + "|" + ANSI_RESET);
+        }
         System.out.println(COLOR_BORDE + borde + ANSI_RESET);
     }
 
     public static void imprimirSubtitulo(String subtitulo) {
         System.out.println();
         System.out.println(COLOR_TITULO + "--- " + subtitulo + " ---" + ANSI_RESET);
+        if (subtitulo != null && !subtitulo.startsWith("Pagina ")) {
+            System.out.println(ANSI_GRAY + "(Escriba ':c' o ':cancel' en cualquier momento para abortar y volver al menu)" + ANSI_RESET);
+        }
     }
 
     public static void imprimirExito(String mensaje) {
@@ -98,7 +159,32 @@ public final class ConsolaUtils {
     }
 
     public static void imprimirError(String mensaje) {
+        if (mensaje != null && mensaje.contains("Operacion cancelada por el usuario")) {
+            imprimirAdvertencia("Operacion cancelada por el usuario. Regresando al menu anterior...");
+            return;
+        }
         System.out.println(COLOR_ERROR + "[ERROR] " + mensaje + ANSI_RESET);
+    }
+
+    // Valida si el texto ingresado corresponde a un comando de cancelacion de formulario (con prefijo ':')
+    public static boolean esComandoCancelar(String entrada) {
+        if (entrada == null) return false;
+        String val = entrada.trim().toLowerCase();
+        return val.equals(":c") || val.equals(":cancel") || val.equals(":cancelar") || val.equals(":q");
+    }
+
+    public static void verificarCancelacion(String entrada) {
+        if (esComandoCancelar(entrada)) {
+            throw new OperacionCanceladaException("Operacion cancelada por el usuario.");
+        }
+    }
+
+    // Valida si el texto ingresado corresponde a un comando de limpieza manual de pantalla en menus
+    public static boolean esComandoLimpiar(String entrada) {
+        if (entrada == null) return false;
+        String val = entrada.trim().toLowerCase();
+        return val.equals("clear") || val.equals("limpiar")
+                || val.equals(":clear") || val.equals("/clear");
     }
 
     public static void imprimirAdvertencia(String mensaje) {
@@ -130,12 +216,15 @@ public final class ConsolaUtils {
     // Metodos de lectura segura
     public static String leerTexto(String prompt) {
         System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
-        return SCANNER.nextLine().trim();
+        String entrada = SCANNER.nextLine().trim();
+        verificarCancelacion(entrada);
+        return entrada;
     }
 
     public static String leerTextoOpcional(String prompt, String valorDefecto) {
         System.out.printf("%s%s [%s]: %s", ANSI_WHITE, prompt, valorDefecto, ANSI_RESET);
         String entrada = SCANNER.nextLine().trim();
+        verificarCancelacion(entrada);
         return entrada.isEmpty() ? valorDefecto : entrada;
     }
 
@@ -163,6 +252,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             try {
                 return Integer.parseInt(entrada);
             } catch (NumberFormatException e) {
@@ -174,12 +264,28 @@ public final class ConsolaUtils {
 
     public static int leerEnteroEnRango(String prompt, int min, int max) {
         while (true) {
-            int valor = leerEntero(prompt);
-            if (valor >= min && valor <= max) {
-                return valor;
+            System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
+            String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
+
+            // Comando manual para limpiar pantalla en menus de seleccion numerica
+            if (esComandoLimpiar(entrada)) {
+                limpiarPantalla();
+                repintarMenuActual();
+                continue;
             }
-            imprimirError(String.format("El valor debe estar comprendido entre %d y %d.", min, max));
-            repintarMenuActual();
+
+            try {
+                int valor = Integer.parseInt(entrada);
+                if (valor >= min && valor <= max) {
+                    return valor;
+                }
+                imprimirError(String.format("El valor debe estar comprendido entre %d y %d.", min, max));
+                repintarMenuActual();
+            } catch (NumberFormatException e) {
+                imprimirError(String.format("Entrada invalida. Ingrese una opcion entre %d y %d (o escriba 'clear' para limpiar).", min, max));
+                repintarMenuActual();
+            }
         }
     }
 
@@ -187,6 +293,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim().replace(',', '.');
+            verificarCancelacion(entrada);
             try {
                 return Double.parseDouble(entrada);
             } catch (NumberFormatException e) {
@@ -208,6 +315,7 @@ public final class ConsolaUtils {
     public static double leerDecimalOpcional(String prompt, double valorDefecto) {
         System.out.print(ANSI_WHITE + prompt + ANSI_RESET);
         String entrada = SCANNER.nextLine().trim().replace(',', '.');
+        verificarCancelacion(entrada);
         if (entrada.isEmpty()) {
             return valorDefecto;
         }
@@ -224,6 +332,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (YYYY-MM-DD): " + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             try {
                 return LocalDate.parse(entrada, formato);
             } catch (DateTimeParseException e) {
@@ -237,6 +346,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (YYYY-MM-DD o Enter para omitir): " + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             if (entrada.isEmpty()) {
                 return null;
             }
@@ -253,6 +363,7 @@ public final class ConsolaUtils {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (HH:mm, 24 horas): " + ANSI_RESET);
             String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
             try {
                 return LocalTime.parse(entrada, formato);
             } catch (DateTimeParseException e) {
@@ -264,11 +375,13 @@ public final class ConsolaUtils {
     public static boolean leerBooleano(String prompt) {
         while (true) {
             System.out.print(ANSI_WHITE + prompt + " (S/N): " + ANSI_RESET);
-            String entrada = SCANNER.nextLine().trim().toUpperCase();
-            if (entrada.equals("S") || entrada.equals("SI") || entrada.equals("Y") || entrada.equals("YES")) {
+            String entrada = SCANNER.nextLine().trim();
+            verificarCancelacion(entrada);
+            String norm = entrada.toUpperCase();
+            if (norm.equals("S") || norm.equals("SI") || norm.equals("Y") || norm.equals("YES")) {
                 return true;
             }
-            if (entrada.equals("N") || entrada.equals("NO")) {
+            if (norm.equals("N") || norm.equals("NO")) {
                 return false;
             }
             imprimirError("Respuesta invalida. Ingrese 'S' para Si o 'N' para No.");
@@ -281,41 +394,77 @@ public final class ConsolaUtils {
             return;
         }
 
+        Runnable menuAnterior = menuActual;
         int totalRegistros = datos.size();
         int totalPaginas = (int) Math.ceil((double) totalRegistros / tamanoPagina);
-        int paginaActual = 1;
+        int[] paginaActual = new int[]{1};
 
+        try {
+            Runnable repintarTabla = () -> {
+                int inicio = (paginaActual[0] - 1) * tamanoPagina;
+                int fin = Math.min(inicio + tamanoPagina, totalRegistros);
+                List<T> subLista = datos.subList(inicio, fin);
+
+                imprimirSubtitulo(String.format("Pagina %d de %d - Total: %d registros", paginaActual[0], totalPaginas, totalRegistros));
+                renderizador.accept(subLista);
+
+                System.out.println(COLOR_BORDE + "-".repeat(76) + ANSI_RESET);
+                System.out.println(ANSI_GRAY + "Navegacion: [S] Siguiente | [A] Anterior | [P] Ir a pagina | [0] Volver" + ANSI_RESET);
+            };
+
+            setMenuActual(repintarTabla);
+
+            while (true) {
+                repintarTabla.run();
+                String opcion = leerTexto("Seleccione una accion: ").toUpperCase();
+
+                if (opcion.equals("0")) {
+                    break;
+                } else if (opcion.equals("S")) {
+                    if (paginaActual[0] < totalPaginas) {
+                        paginaActual[0]++;
+                    } else {
+                        imprimirAdvertencia("Ya se encuentra en la ultima pagina.");
+                    }
+                } else if (opcion.equals("A")) {
+                    if (paginaActual[0] > 1) {
+                        paginaActual[0]--;
+                    } else {
+                        imprimirAdvertencia("Ya se encuentra en la primera pagina.");
+                    }
+                } else if (opcion.equals("P")) {
+                    int paginaDestino = pedirNumeroPagina(totalPaginas, repintarTabla);
+                    if (paginaDestino > 0) {
+                        paginaActual[0] = paginaDestino;
+                    }
+                } else {
+                    imprimirError("Opcion no reconocida.");
+                }
+            }
+        } finally {
+            setMenuActual(menuAnterior);
+        }
+    }
+
+    private static int pedirNumeroPagina(int totalPaginas, Runnable repintarTabla) {
         while (true) {
-            int inicio = (paginaActual - 1) * tamanoPagina;
-            int fin = Math.min(inicio + tamanoPagina, totalRegistros);
-            List<T> subLista = datos.subList(inicio, fin);
-
-            imprimirSubtitulo(String.format("Pagina %d de %d - Total: %d registros", paginaActual, totalPaginas, totalRegistros));
-            renderizador.accept(subLista);
-
-            System.out.println(COLOR_BORDE + "-".repeat(76) + ANSI_RESET);
-            System.out.println(ANSI_GRAY + "Navegacion: [S] Siguiente | [A] Anterior | [P] Ir a pagina | [0] Volver" + ANSI_RESET);
-            String opcion = leerTexto("Seleccione una accion: ").toUpperCase();
-
-            if (opcion.equals("0")) {
-                break;
-            } else if (opcion.equals("S")) {
-                if (paginaActual < totalPaginas) {
-                    paginaActual++;
-                } else {
-                    imprimirAdvertencia("Ya se encuentra en la ultima pagina.");
+            System.out.print(ANSI_WHITE + String.format("Ingrese numero de pagina (1 a %d, o 0 para cancelar): ", totalPaginas) + ANSI_RESET);
+            String entrada = SCANNER.nextLine().trim();
+            if (entrada.isEmpty() || entrada.equals("0")) {
+                imprimirInfo("Navegacion cancelada.");
+                return -1;
+            }
+            try {
+                int valor = Integer.parseInt(entrada);
+                if (valor >= 1 && valor <= totalPaginas) {
+                    return valor;
                 }
-            } else if (opcion.equals("A")) {
-                if (paginaActual > 1) {
-                    paginaActual--;
-                } else {
-                    imprimirAdvertencia("Ya se encuentra en la primera pagina.");
-                }
-            } else if (opcion.equals("P")) {
-                int paginaDestino = leerEnteroEnRango("Ingrese numero de pagina: ", 1, totalPaginas);
-                paginaActual = paginaDestino;
-            } else {
-                imprimirError("Opcion no reconocida.");
+                imprimirError(String.format("El valor debe estar comprendido entre 1 y %d.", totalPaginas));
+            } catch (NumberFormatException e) {
+                imprimirError("Entrada invalida. Debe ingresar un numero entero.");
+            }
+            if (repintarTabla != null) {
+                repintarTabla.run();
             }
         }
     }

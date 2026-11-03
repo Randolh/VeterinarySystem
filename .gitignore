@@ -76,3 +76,7 @@ nbdist/
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/java,maven,netbeans,visualstudiocode
+
+# Configuracion local sensible de base de datos
+database.properties
+!database.properties.example

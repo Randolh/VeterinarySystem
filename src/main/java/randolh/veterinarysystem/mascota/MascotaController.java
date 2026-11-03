@@ -1,5 +1,7 @@
 package randolh.veterinarysystem.mascota;
 
+import randolh.veterinarysystem.consulta.ConsultaDAO;
+import randolh.veterinarysystem.consulta.ProcedimientoEspecial;
 import randolh.veterinarysystem.core.exception.ValidacionException;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 import randolh.veterinarysystem.dueno.Dueno;
@@ -16,15 +18,24 @@ public class MascotaController {
 
     private final MascotaDAO mascotaDAO;
     private final DuenoDAO duenoDAO;
+    private final ConsultaDAO consultaDAO;
 
     public MascotaController() {
         this.mascotaDAO = new MascotaDAO();
         this.duenoDAO = new DuenoDAO();
+        this.consultaDAO = new ConsultaDAO();
     }
 
     public MascotaController(MascotaDAO mascotaDAO, DuenoDAO duenoDAO) {
         this.mascotaDAO = mascotaDAO;
         this.duenoDAO = duenoDAO;
+        this.consultaDAO = new ConsultaDAO();
+    }
+
+    public MascotaController(MascotaDAO mascotaDAO, DuenoDAO duenoDAO, ConsultaDAO consultaDAO) {
+        this.mascotaDAO = mascotaDAO;
+        this.duenoDAO = duenoDAO;
+        this.consultaDAO = consultaDAO;
     }
 
     // Registra una nueva mascota validando reglas clinicas y dueno activo
@@ -150,6 +161,18 @@ public class MascotaController {
 
     public List<MascotaDAO.CatalogoItem> listarRazasPorEspecie(int especieId) {
         return mascotaDAO.listarRazasPorEspecie(especieId);
+    }
+
+    // Historial de vacunas y biologicos aplicados
+    public List<MascotaDAO.VacunaHistorialItem> listarVacunasPorMascota(int mascotaId) {
+        if (mascotaId <= 0) throw new ValidacionException("ID de mascota invalido.");
+        return mascotaDAO.listarVacunasPorMascota(mascotaId);
+    }
+
+    // Historial de procedimientos quirurgicos y cirugias
+    public List<ProcedimientoEspecial> listarProcedimientosPorMascota(int mascotaId) {
+        if (mascotaId <= 0) throw new ValidacionException("ID de mascota invalido.");
+        return consultaDAO.listarProcedimientosPorMascota(mascotaId);
     }
 
     // Validacion de reglas de negocio clinicas

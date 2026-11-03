@@ -1,5 +1,6 @@
 package randolh.veterinarysystem.mascota;
 
+import randolh.veterinarysystem.consulta.ProcedimientoEspecial;
 import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.exception.ValidacionException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
@@ -33,16 +34,16 @@ public class MascotaView {
     // Menu principal del modulo de mascotas
     public void mostrarMenu() {
         Runnable menu = () -> {
-            ConsolaUtils.imprimirTitulo("MODULO DE GESTION DE PACIENTES Y MASCOTAS");
-            System.out.println(ConsolaUtils.COLOR_INFO + "1. Registrar nueva mascota / paciente (asistido con Builder)" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "2. Listar todos los pacientes registrados (tabla paginada)" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "3. Buscar paciente por ID" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "4. Buscar paciente por codigo de microchip" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "5. Buscar pacientes por nombre" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "6. Consultar pacientes de un dueno especifico" + ConsolaUtils.ANSI_RESET);
+            ConsolaUtils.imprimirTitulo("MODULO DE GESTION DE MASCOTAS");
+            System.out.println(ConsolaUtils.COLOR_INFO + "1. Registrar nueva mascota" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "2. Listar todas las mascotas registradas (tabla paginada)" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "3. Buscar mascota por ID" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "4. Buscar mascota por codigo de microchip" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "5. Buscar mascotas por nombre" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "6. Consultar mascotas de un dueno especifico" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "7. Transferir formalmente la propiedad de una mascota" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "8. Generar y exportar Carnet de Salud del paciente" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "9. Desactivar / dar de baja paciente (eliminacion logica)" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "8. Generar y exportar Carnet de Salud de la mascota" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "9. Desactivar / dar de baja mascota (eliminacion logica)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_BORDE + "0. Volver al menu anterior" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_BORDE + "----------------------------------------------------------------------------" + ConsolaUtils.ANSI_RESET);
         };
@@ -77,13 +78,13 @@ public class MascotaView {
         }
     }
 
-    // Formulario interactivo que emplea el patron Builder
+    // Formulario interactivo para registrar nueva mascota
     private void registrarNuevaMascota() {
-        ConsolaUtils.imprimirSubtitulo("Alta de Paciente (Patron Builder)");
+        ConsolaUtils.imprimirSubtitulo("Alta de Mascota");
 
         try {
             int duenoId = ConsolaUtils.leerEntero("ID del dueno responsable: ");
-            String nombre = ConsolaUtils.leerTextoObligatorio("Nombre del paciente: ", 100);
+            String nombre = ConsolaUtils.leerTextoObligatorio("Nombre de la mascota: ", 100);
 
             // Seleccion interactiva de especie
             List<MascotaDAO.CatalogoItem> especies = controller.listarEspecies();
@@ -107,8 +108,8 @@ public class MascotaView {
                 razaId = ConsolaUtils.leerEntero("Seleccione el ID de la raza: ");
             }
 
-            LocalDate fechaNac = ConsolaUtils.leerFecha("Fecha de nacimiento");
-            boolean esHembra = ConsolaUtils.leerBooleano("El paciente es Hembra?");
+            LocalDate fechaNac = capturarFechaNacimientoOEdadEstimada();
+            boolean esHembra = ConsolaUtils.leerBooleano("La mascota es Hembra?");
             SexoEnum sexo = esHembra ? SexoEnum.HEMBRA : SexoEnum.MACHO;
 
             double peso = ConsolaUtils.leerDecimalEnRango("Peso actual en kilogramos (ej. 14.5): ", 0.02, 999.0);
@@ -135,14 +136,35 @@ public class MascotaView {
                     .build();
 
             Mascota guardada = controller.registrarMascota(nuevaMascota);
-            ConsolaUtils.imprimirExito(String.format("Paciente '%s' registrado exitosamente con ID: %d",
+            ConsolaUtils.imprimirExito(String.format("Mascota '%s' registrada exitosamente con ID: %d",
                     guardada.getNombre(), guardada.getId()));
 
         } catch (ValidacionException e) {
             ConsolaUtils.imprimirError("Error de validacion: " + e.getMessage());
         } catch (Exception e) {
-            ConsolaUtils.imprimirError("Error al registrar paciente: " + e.getMessage());
+            ConsolaUtils.imprimirError("Error al registrar mascota: " + e.getMessage());
         }
+    }
+
+    // Captura fecha exacta o calcula la fecha a partir de edad estimada en anos y meses
+    private LocalDate capturarFechaNacimientoOEdadEstimada() {
+        boolean conoceFecha = ConsolaUtils.leerBooleano("¿Conoce la fecha exacta de nacimiento de la mascota?");
+        if (conoceFecha) {
+            return ConsolaUtils.leerFecha("Fecha de nacimiento");
+        }
+
+        System.out.println(ConsolaUtils.ANSI_CYAN + "Estimacion de edad de la mascota:" + ConsolaUtils.ANSI_RESET);
+        int anios = ConsolaUtils.leerEnteroEnRango("Edad estimada en anos (0 a 30): ", 0, 30);
+        int meses = ConsolaUtils.leerEnteroEnRango("Meses adicionales (0 a 11): ", 0, 11);
+
+        LocalDate fechaCalculada;
+        if (anios == 0 && meses == 0) {
+            fechaCalculada = LocalDate.now();
+        } else {
+            fechaCalculada = LocalDate.now().minusYears(anios).minusMonths(meses);
+        }
+        ConsolaUtils.imprimirInfo("Fecha aproximada calculada: " + fechaCalculada);
+        return fechaCalculada;
     }
 
     // Listado tabular paginado de pacientes
@@ -177,20 +199,20 @@ public class MascotaView {
 
     // Busqueda por ID
     private void buscarPorId() {
-        ConsolaUtils.imprimirSubtitulo("Buscar Paciente por ID");
+        ConsolaUtils.imprimirSubtitulo("Buscar Mascota por ID");
         int id = ConsolaUtils.leerEntero("Ingrese el ID de la mascota: ");
 
         Optional<Mascota> opt = controller.obtenerPorId(id);
         if (opt.isPresent()) {
             mostrarFichaClinica(opt.get());
         } else {
-            ConsolaUtils.imprimirAdvertencia("No se encontro ningun paciente con el ID: " + id);
+            ConsolaUtils.imprimirAdvertencia("No se encontro ninguna mascota con el ID: " + id);
         }
     }
 
     // Busqueda por microchip
     private void buscarPorMicrochip() {
-        ConsolaUtils.imprimirSubtitulo("Buscar Paciente por Microchip");
+        ConsolaUtils.imprimirSubtitulo("Buscar Mascota por Microchip");
         String chip = ConsolaUtils.leerTexto("Ingrese el codigo de microchip: ");
 
         try {
@@ -198,7 +220,7 @@ public class MascotaView {
             if (opt.isPresent()) {
                 mostrarFichaClinica(opt.get());
             } else {
-                ConsolaUtils.imprimirAdvertencia("No se encontro ningun paciente con el microchip: " + chip);
+                ConsolaUtils.imprimirAdvertencia("No se encontro ninguna mascota con el microchip: " + chip);
             }
         } catch (ValidacionException e) {
             ConsolaUtils.imprimirError(e.getMessage());
@@ -207,13 +229,13 @@ public class MascotaView {
 
     // Busqueda por nombre
     private void buscarPorNombre() {
-        ConsolaUtils.imprimirSubtitulo("Buscar Pacientes por Nombre");
+        ConsolaUtils.imprimirSubtitulo("Buscar Mascotas por Nombre");
         String nombre = ConsolaUtils.leerTexto("Ingrese el nombre a buscar: ");
 
         try {
             List<Mascota> lista = controller.buscarPorNombre(nombre);
             if (lista.isEmpty()) {
-                ConsolaUtils.imprimirAdvertencia("No se encontraron pacientes con el nombre: " + nombre);
+                ConsolaUtils.imprimirAdvertencia("No se encontraron mascotas con el nombre: " + nombre);
             } else {
                 ConsolaUtils.mostrarTablaPaginada(lista, 5, this::renderizarTablaMascotas);
             }
@@ -224,7 +246,7 @@ public class MascotaView {
 
     // Listar pacientes de un dueno
     private void listarPorDueno() {
-        ConsolaUtils.imprimirSubtitulo("Pacientes de un Dueno / Cliente");
+        ConsolaUtils.imprimirSubtitulo("Mascotas de un Dueno / Cliente");
         int duenoId = ConsolaUtils.leerEntero("Ingrese el ID del cliente: ");
 
         try {
@@ -275,7 +297,7 @@ public class MascotaView {
 
     // Exporta el carnet oficial de salud en texto limpio estructurado
     private void exportarCarnetSalud() {
-        ConsolaUtils.imprimirSubtitulo("Exportar Carnet de Salud del Paciente");
+        ConsolaUtils.imprimirSubtitulo("Exportar Carnet de Salud de la Mascota");
         int id = ConsolaUtils.leerEntero("Ingrese el ID de la mascota: ");
 
         Optional<Mascota> opt = controller.obtenerPorId(id);
@@ -317,6 +339,62 @@ public class MascotaView {
             pw.printf(" Alergias      : %s%n", m.getAlergias() != null ? m.getAlergias() : "Ninguna reportada");
             pw.printf(" Condiciones   : %s%n", m.getCondicionesPreexistentes() != null ? m.getCondicionesPreexistentes() : "Sin condiciones preexistentes");
             pw.println("--------------------------------------------------------------------------------");
+
+            DateTimeFormatter dtfFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter dtfHora = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            // 1. Historial de Vacunacion y Biologicos
+            List<MascotaDAO.VacunaHistorialItem> vacunas = controller.listarVacunasPorMascota(m.getId());
+            pw.println(" HISTORIAL DE VACUNACION Y BIOLOGICOS:");
+            pw.println("--------------------------------------------------------------------------------");
+            if (vacunas.isEmpty()) {
+                pw.println("  (No se registran vacunas aplicadas para esta mascota)");
+            } else {
+                pw.printf("| %-10s | %-28s | %-12s | %-10s | %-20s |%n",
+                        "Fecha Apl.", "Vacuna / Biologico", "Lote", "Prox. Dosis", "Profesional");
+                pw.println("+------------+------------------------------+--------------+------------+----------------------+");
+                for (MascotaDAO.VacunaHistorialItem v : vacunas) {
+                    String fApl = v.getFechaAplicacion() != null ? v.getFechaAplicacion().format(dtfFecha) : "N/D";
+                    String fProx = v.getProximaDosis() != null ? v.getProximaDosis().format(dtfFecha) : "N/D";
+                    pw.printf("| %-10s | %-28s | %-12s | %-10s | %-20s |%n",
+                            fApl,
+                            truncar(v.getNombreVacuna(), 28),
+                            truncar(v.getLote(), 12),
+                            fProx,
+                            truncar(v.getVeterinario(), 20));
+                }
+            }
+            pw.println("--------------------------------------------------------------------------------");
+
+            // 2. Historial de Procedimientos Quirurgicos y Cirugias
+            List<ProcedimientoEspecial> cirugias = controller.listarProcedimientosPorMascota(m.getId());
+            pw.println(" HISTORIAL DE CIRUGIAS Y PROCEDIMIENTOS ESPECIALES:");
+            pw.println("--------------------------------------------------------------------------------");
+            if (cirugias.isEmpty()) {
+                pw.println("  (No se registran procedimientos quirurgicos para esta mascota)");
+            } else {
+                pw.printf("| %-16s | %-32s | %-12s | %-20s |%n",
+                        "Fecha / Hora", "Procedimiento", "Estado", "Cirujano");
+                pw.println("+------------------+----------------------------------+--------------+----------------------+");
+                for (ProcedimientoEspecial p : cirugias) {
+                    String fProc = p.getFechaHora() != null ? p.getFechaHora().format(dtfHora) : "N/D";
+                    pw.printf("| %-16s | %-32s | %-12s | %-20s |%n",
+                            fProc,
+                            truncar(p.getNombreProcedimiento(), 32),
+                            p.getEstado() != null ? p.getEstado().getValorDb() : "N/D",
+                            truncar(p.getNombreVeterinario() != null ? p.getNombreVeterinario() : "No asignado", 20));
+                    if (p.getDetalleProcedimiento() != null && !p.getDetalleProcedimiento().trim().isEmpty()) {
+                        pw.println("   Detalle       : " + p.getDetalleProcedimiento());
+                    }
+                    if (p.getSeguimientoPostoperatorio() != null && !p.getSeguimientoPostoperatorio().trim().isEmpty()) {
+                        pw.println("   Postoperatorio: " + p.getSeguimientoPostoperatorio());
+                    }
+                    if (p.getProximoControl() != null) {
+                        pw.println("   Proximo Control: " + p.getProximoControl().format(dtfFecha));
+                    }
+                }
+            }
+            pw.println("--------------------------------------------------------------------------------");
             pw.printf(" Fecha Emision : %s%n", LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             pw.println();
             pw.println("               _____________________________________________");
@@ -334,24 +412,24 @@ public class MascotaView {
 
     // Desactivacion logica
     private void desactivarPaciente() {
-        ConsolaUtils.imprimirSubtitulo("Desactivar Paciente (Baja Logica)");
-        int id = ConsolaUtils.leerEntero("Ingrese el ID del paciente a dar de baja: ");
+        ConsolaUtils.imprimirSubtitulo("Desactivar Mascota (Baja Logica)");
+        int id = ConsolaUtils.leerEntero("Ingrese el ID de la mascota a dar de baja: ");
 
         Optional<Mascota> opt = controller.obtenerPorId(id);
         if (opt.isEmpty()) {
-            ConsolaUtils.imprimirAdvertencia("No se encontro el paciente ID: " + id);
+            ConsolaUtils.imprimirAdvertencia("No se encontro la mascota ID: " + id);
             return;
         }
 
         mostrarFichaClinica(opt.get());
-        boolean confirmar = ConsolaUtils.leerBooleano("Confirma que desea dar de baja a este paciente?");
+        boolean confirmar = ConsolaUtils.leerBooleano("Confirma que desea dar de baja a esta mascota?");
         if (confirmar) {
             try {
                 boolean ok = controller.desactivarMascota(id);
                 if (ok) {
-                    ConsolaUtils.imprimirExito("Paciente desactivado correctamente.");
+                    ConsolaUtils.imprimirExito("Mascota desactivada correctamente.");
                 } else {
-                    ConsolaUtils.imprimirError("No se pudo desactivar el paciente.");
+                    ConsolaUtils.imprimirError("No se pudo desactivar la mascota.");
                 }
             } catch (ValidacionException e) {
                 ConsolaUtils.imprimirError(e.getMessage());
@@ -362,7 +440,7 @@ public class MascotaView {
     // Ficha clinica enmarcada en caja ANSI
     private void mostrarFichaClinica(Mascota m) {
         System.out.println();
-        System.out.println(ConsolaUtils.COLOR_TITULO + "  FICHA CLINICA DE PACIENTE #" + m.getId() + ConsolaUtils.ANSI_RESET);
+        System.out.println(ConsolaUtils.COLOR_TITULO + "  FICHA CLINICA DE MASCOTA #" + m.getId() + ConsolaUtils.ANSI_RESET);
         System.out.println("  Nombre          : " + m.getNombre());
         System.out.printf("  Especie / Raza  : %s / %s%n", m.getNombreEspecie(), m.getNombreRaza());
         System.out.printf("  Sexo / Peso     : %s / %.2f kg%n", m.getSexo().getValorDb(), m.getPesoActual());

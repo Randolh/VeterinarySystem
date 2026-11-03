@@ -29,7 +29,7 @@ public class FacturacionView {
     public void mostrarMenu() {
         Runnable menu = () -> {
             ConsolaUtils.imprimirTitulo("MODULO DE FACTURACION Y LIQUIDACION FISCAL");
-            System.out.println(ConsolaUtils.COLOR_INFO + "1. Emitir nueva factura de venta (Strategy Club + PDF)" + ConsolaUtils.ANSI_RESET);
+            System.out.println(ConsolaUtils.COLOR_INFO + "1. Emitir nueva factura de venta" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "2. Listar todas las facturas emitidas (tabla paginada)" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "3. Consultar detalle de factura por ID o Numero" + ConsolaUtils.ANSI_RESET);
             System.out.println(ConsolaUtils.COLOR_INFO + "4. Reimprimir / exportar comprobantes (PDF y Texto plano)" + ConsolaUtils.ANSI_RESET);
@@ -127,7 +127,89 @@ public class FacturacionView {
             }
         }
 
-        // 3. Mostrar previsualizacion del calculo financiero preliminar
+        liquidarYProcesarFactura(duenoId, items, estrategia, "");
+    }
+
+    // Emite factura formal a partir de una atencion clinica o quirurgica con items precargados
+    public void emitirFacturaConItemsPredefinidos(int duenoId, List<ItemFactura> itemsIniciales, String observacionesSugeridas) {
+        ConsolaUtils.imprimirSubtitulo("FACTURACION DIRECTA DE ATENCION MEDICA");
+
+        Optional<Dueno> duenoOpt = controller.getDuenoDAO().buscarPorId(duenoId);
+        if (duenoOpt.isEmpty()) {
+            ConsolaUtils.imprimirError("No se encontro cliente/dueno con ID: " + duenoId);
+            return;
+        }
+
+        Dueno dueno = duenoOpt.get();
+        if (!dueno.isActivo()) {
+            ConsolaUtils.imprimirAdvertencia("El cliente " + dueno.getNombreCompleto() + " esta inactivo en el sistema.");
+            return;
+        }
+
+        EstrategiaDescuento estrategia = controller.resolverEstrategiaDueno(duenoId);
+        Optional<FacturacionDAO.InfoClubDueno> clubOpt = controller.obtenerInfoClub(duenoId);
+
+        System.out.println(ConsolaUtils.ANSI_CYAN + "Cliente: " + dueno.getNombreCompleto() +
+                " | Doc: " + dueno.getNumeroDocumento() + " | Tel: " + dueno.getTelefono() + ConsolaUtils.ANSI_RESET);
+
+        if (clubOpt.isPresent() && clubOpt.get().isActivo()) {
+            System.out.println(ConsolaUtils.badgeExito("CLUB MASCOTAS: " + estrategia.obtenerNombreNivel().toUpperCase()) +
+                    " " + ConsolaUtils.ANSI_YELLOW + "Descuento aplicable: " + estrategia.obtenerPorcentajeDescuento() + "%" +
+                    " | Puntos acumulados actuales: " + clubOpt.get().getPuntosDisponibles() + " pts" + ConsolaUtils.ANSI_RESET);
+        } else {
+            System.out.println(ConsolaUtils.badgeInfo("CLIENTE GENERAL (SIN CLUB)") +
+                    " " + ConsolaUtils.ANSI_GRAY + "Sin descuentos especiales de fidelizacion." + ConsolaUtils.ANSI_RESET);
+        }
+
+        List<ItemFactura> items = new ArrayList<>(itemsIniciales != null ? itemsIniciales : List.of());
+
+        System.out.println("\n" + ConsolaUtils.ANSI_CYAN + "Conceptos precargados de la atencion:" + ConsolaUtils.ANSI_RESET);
+        for (int i = 0; i < items.size(); i++) {
+            ItemFactura it = items.get(i);
+            System.out.printf("  %d. [%s] %s x%d = $%.2f%n",
+                    i + 1, it.getTipoItem(), it.getNombreItem(), it.getCantidad(), it.getSubtotal());
+        }
+
+        boolean agregarMas = ConsolaUtils.leerBooleano("¿Desea agregar articulos o servicios adicionales a la factura?");
+        if (agregarMas) {
+            boolean agregando = true;
+            while (agregando) {
+                System.out.println("\n" + ConsolaUtils.ANSI_BOLD + "Agregar concepto adicional:" + ConsolaUtils.ANSI_RESET);
+                System.out.println("  1. Agregar Medicamento / Insumo de Farmacia (Inventario)");
+                System.out.println("  2. Agregar Servicio Clinico / Prestacion Medica (Catalogo)");
+                System.out.println("  3. Proceder a la liquidacion");
+                System.out.println("  0. Cancelar emision de factura");
+
+                int opc = ConsolaUtils.leerEnteroEnRango("Seleccione opcion [0-3]: ", 0, 3);
+                switch (opc) {
+                    case 1 -> agregarItemProducto(items);
+                    case 2 -> agregarItemServicio(items);
+                    case 3 -> {
+                        if (items.isEmpty()) {
+                            ConsolaUtils.imprimirAdvertencia("Debe haber al menos un item para facturar.");
+                        } else {
+                            agregando = false;
+                        }
+                    }
+                    case 0 -> {
+                        ConsolaUtils.imprimirAdvertencia("Facturacion cancelada.");
+                        return;
+                    }
+                }
+            }
+        }
+
+        liquidarYProcesarFactura(duenoId, items, estrategia, observacionesSugeridas);
+    }
+
+    // Liquidacion financiera, calculo de impuestos/descuentos y emision dual
+    private void liquidarYProcesarFactura(int duenoId, List<ItemFactura> items, EstrategiaDescuento estrategia, String observacionesDefecto) {
+        if (items.isEmpty()) {
+            ConsolaUtils.imprimirAdvertencia("No hay conceptos para facturar.");
+            return;
+        }
+
+        // Mostrar previsualizacion del calculo financiero preliminar
         BigDecimal subtotal = BigDecimal.ZERO;
         for (ItemFactura it : items) {
             subtotal = subtotal.add(it.getSubtotal());
@@ -152,7 +234,7 @@ public class FacturacionView {
             System.out.printf(ConsolaUtils.ANSI_GREEN + " Puntos Club a acumular:  +%d puntos%n" + ConsolaUtils.ANSI_RESET, puntosGanados);
         }
 
-        // 4. Metodo de pago
+        // Metodo de pago
         System.out.println("\n" + ConsolaUtils.ANSI_BOLD + "Seleccione Metodo de Pago:" + ConsolaUtils.ANSI_RESET);
         System.out.println("  1. Efectivo");
         System.out.println("  2. Tarjeta");
@@ -166,7 +248,11 @@ public class FacturacionView {
             default -> MetodoPagoEnum.EFECTIVO;
         };
 
-        String observaciones = ConsolaUtils.leerTextoOpcional("Observaciones o notas contables (opcional): ", "");
+        String defaultObs = (observacionesDefecto != null && !observacionesDefecto.trim().isEmpty()) ? observacionesDefecto.trim() : "";
+        String obsPrompt = !defaultObs.isEmpty()
+                ? "Observaciones [Enter para '" + defaultObs + "']: "
+                : "Observaciones o notas contables (opcional): ";
+        String observaciones = ConsolaUtils.leerTextoOpcional(obsPrompt, defaultObs);
 
         boolean confirmar = ConsolaUtils.leerBooleano("Desea confirmar y emitir formalmente la factura?");
         if (!confirmar) {
