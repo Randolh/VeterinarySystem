@@ -281,41 +281,77 @@ public final class ConsolaUtils {
             return;
         }
 
+        Runnable menuAnterior = menuActual;
         int totalRegistros = datos.size();
         int totalPaginas = (int) Math.ceil((double) totalRegistros / tamanoPagina);
-        int paginaActual = 1;
+        int[] paginaActual = new int[]{1};
 
+        try {
+            Runnable repintarTabla = () -> {
+                int inicio = (paginaActual[0] - 1) * tamanoPagina;
+                int fin = Math.min(inicio + tamanoPagina, totalRegistros);
+                List<T> subLista = datos.subList(inicio, fin);
+
+                imprimirSubtitulo(String.format("Pagina %d de %d - Total: %d registros", paginaActual[0], totalPaginas, totalRegistros));
+                renderizador.accept(subLista);
+
+                System.out.println(COLOR_BORDE + "-".repeat(76) + ANSI_RESET);
+                System.out.println(ANSI_GRAY + "Navegacion: [S] Siguiente | [A] Anterior | [P] Ir a pagina | [0] Volver" + ANSI_RESET);
+            };
+
+            setMenuActual(repintarTabla);
+
+            while (true) {
+                repintarTabla.run();
+                String opcion = leerTexto("Seleccione una accion: ").toUpperCase();
+
+                if (opcion.equals("0")) {
+                    break;
+                } else if (opcion.equals("S")) {
+                    if (paginaActual[0] < totalPaginas) {
+                        paginaActual[0]++;
+                    } else {
+                        imprimirAdvertencia("Ya se encuentra en la ultima pagina.");
+                    }
+                } else if (opcion.equals("A")) {
+                    if (paginaActual[0] > 1) {
+                        paginaActual[0]--;
+                    } else {
+                        imprimirAdvertencia("Ya se encuentra en la primera pagina.");
+                    }
+                } else if (opcion.equals("P")) {
+                    int paginaDestino = pedirNumeroPagina(totalPaginas, repintarTabla);
+                    if (paginaDestino > 0) {
+                        paginaActual[0] = paginaDestino;
+                    }
+                } else {
+                    imprimirError("Opcion no reconocida.");
+                }
+            }
+        } finally {
+            setMenuActual(menuAnterior);
+        }
+    }
+
+    private static int pedirNumeroPagina(int totalPaginas, Runnable repintarTabla) {
         while (true) {
-            int inicio = (paginaActual - 1) * tamanoPagina;
-            int fin = Math.min(inicio + tamanoPagina, totalRegistros);
-            List<T> subLista = datos.subList(inicio, fin);
-
-            imprimirSubtitulo(String.format("Pagina %d de %d - Total: %d registros", paginaActual, totalPaginas, totalRegistros));
-            renderizador.accept(subLista);
-
-            System.out.println(COLOR_BORDE + "-".repeat(76) + ANSI_RESET);
-            System.out.println(ANSI_GRAY + "Navegacion: [S] Siguiente | [A] Anterior | [P] Ir a pagina | [0] Volver" + ANSI_RESET);
-            String opcion = leerTexto("Seleccione una accion: ").toUpperCase();
-
-            if (opcion.equals("0")) {
-                break;
-            } else if (opcion.equals("S")) {
-                if (paginaActual < totalPaginas) {
-                    paginaActual++;
-                } else {
-                    imprimirAdvertencia("Ya se encuentra en la ultima pagina.");
+            System.out.print(ANSI_WHITE + String.format("Ingrese numero de pagina (1 a %d, o 0 para cancelar): ", totalPaginas) + ANSI_RESET);
+            String entrada = SCANNER.nextLine().trim();
+            if (entrada.isEmpty() || entrada.equals("0")) {
+                imprimirInfo("Navegacion cancelada.");
+                return -1;
+            }
+            try {
+                int valor = Integer.parseInt(entrada);
+                if (valor >= 1 && valor <= totalPaginas) {
+                    return valor;
                 }
-            } else if (opcion.equals("A")) {
-                if (paginaActual > 1) {
-                    paginaActual--;
-                } else {
-                    imprimirAdvertencia("Ya se encuentra en la primera pagina.");
-                }
-            } else if (opcion.equals("P")) {
-                int paginaDestino = leerEnteroEnRango("Ingrese numero de pagina: ", 1, totalPaginas);
-                paginaActual = paginaDestino;
-            } else {
-                imprimirError("Opcion no reconocida.");
+                imprimirError(String.format("El valor debe estar comprendido entre 1 y %d.", totalPaginas));
+            } catch (NumberFormatException e) {
+                imprimirError("Entrada invalida. Debe ingresar un numero entero.");
+            }
+            if (repintarTabla != null) {
+                repintarTabla.run();
             }
         }
     }
