@@ -1,6 +1,7 @@
 package randolh.veterinarysystem.inventario;
 
 import randolh.veterinarysystem.core.exception.InventarioException;
+import randolh.veterinarysystem.core.exception.OperacionCanceladaException;
 import randolh.veterinarysystem.core.exception.ValidacionException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
 
@@ -429,26 +430,31 @@ public class InventarioView {
     private void mostrarMenuProveedores() {
         boolean enProveedores = true;
         while (enProveedores) {
-            ConsolaUtils.imprimirSubtitulo("SUBMODULO DE GESTION DE PROVEEDORES");
-            System.out.println(ConsolaUtils.COLOR_INFO + "1. Registrar nuevo proveedor" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "2. Listar todos los proveedores" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "3. Actualizar informacion de proveedor" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_INFO + "4. Desactivar proveedor (baja logica)" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_BORDE + "0. Regresar al menu de inventario" + ConsolaUtils.ANSI_RESET);
-            System.out.println(ConsolaUtils.COLOR_BORDE + "--------------------------------------------------------" + ConsolaUtils.ANSI_RESET);
+            try {
+                ConsolaUtils.imprimirSubtitulo("SUBMODULO DE GESTION DE PROVEEDORES");
+                System.out.println(ConsolaUtils.COLOR_INFO + "1. Registrar nuevo proveedor" + ConsolaUtils.ANSI_RESET);
+                System.out.println(ConsolaUtils.COLOR_INFO + "2. Listar todos los proveedores" + ConsolaUtils.ANSI_RESET);
+                System.out.println(ConsolaUtils.COLOR_INFO + "3. Actualizar informacion de proveedor" + ConsolaUtils.ANSI_RESET);
+                System.out.println(ConsolaUtils.COLOR_INFO + "4. Desactivar proveedor (baja logica)" + ConsolaUtils.ANSI_RESET);
+                System.out.println(ConsolaUtils.COLOR_BORDE + "0. Regresar al menu de inventario" + ConsolaUtils.ANSI_RESET);
+                System.out.println(ConsolaUtils.COLOR_BORDE + "--------------------------------------------------------" + ConsolaUtils.ANSI_RESET);
 
-            int opcion = ConsolaUtils.leerEnteroEnRango("Seleccione una opcion [0-4]: ", 0, 4);
-            switch (opcion) {
-                case 1 -> registrarProveedor();
-                case 2 -> listarProveedores();
-                case 3 -> actualizarProveedor();
-                case 4 -> desactivarProveedor();
-                case 0 -> enProveedores = false;
-                default -> ConsolaUtils.imprimirError("Opcion invalida.");
-            }
+                int opcion = ConsolaUtils.leerEnteroEnRango("Seleccione una opcion [0-4]: ", 0, 4);
+                switch (opcion) {
+                    case 1 -> registrarProveedor();
+                    case 2 -> listarProveedores();
+                    case 3 -> actualizarProveedor();
+                    case 4 -> desactivarProveedor();
+                    case 0 -> enProveedores = false;
+                    default -> ConsolaUtils.imprimirError("Opcion invalida.");
+                }
 
-            if (enProveedores) {
-                ConsolaUtils.pausar();
+                if (enProveedores) {
+                    ConsolaUtils.pausar();
+                }
+            } catch (OperacionCanceladaException e) {
+                ConsolaUtils.imprimirAdvertencia(e.getMessage() + " Regresando al menu de inventario...");
+                enProveedores = false;
             }
         }
     }

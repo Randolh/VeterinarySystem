@@ -147,30 +147,38 @@ public class MenuPrincipal {
 
         boolean ejecutando = true;
         while (ejecutando) {
-            menu.run();
-            int opcion = ConsolaUtils.leerEnteroEnRango("Seleccione un modulo [0-10]: ", 0, 10);
+            try {
+                menu.run();
+                int opcion = ConsolaUtils.leerEnteroEnRango("Seleccione un modulo [0-10]: ", 0, 10);
 
-            switch (opcion) {
-                case 1 -> ejecutarModuloSeguro(this::mostrarSubmenuPacientes);
-                case 2 -> ejecutarModuloSeguro(() -> getVeterinarioView().mostrarMenu());
-                case 3 -> ejecutarModuloSeguro(() -> getCitaView().mostrarMenu());
-                case 4 -> ejecutarModuloSeguro(() -> getConsultaView().mostrarMenu());
-                case 5 -> ejecutarModuloSeguro(() -> getInventarioView().mostrarMenu());
-                case 6 -> ejecutarModuloSeguro(() -> getAlertaView().mostrarMenu());
-                case 7 -> ejecutarModuloSeguro(() -> getFacturacionView().mostrarMenu());
-                case 8 -> ejecutarModuloSeguro(() -> getActividadView().mostrarMenu());
-                case 9 -> ejecutarModuloSeguro(() -> getReporteView().mostrarMenu());
-                case 10 -> {
-                    // El asistente de base de datos siempre es accesible en linea y fuera de linea
-                    getConfiguradorConsola().mostrarMenu();
-                    ConsolaUtils.setMenuActual(menu);
+                switch (opcion) {
+                    case 1 -> ejecutarModuloSeguro(this::mostrarSubmenuPacientes);
+                    case 2 -> ejecutarModuloSeguro(() -> getVeterinarioView().mostrarMenu());
+                    case 3 -> ejecutarModuloSeguro(() -> getCitaView().mostrarMenu());
+                    case 4 -> ejecutarModuloSeguro(() -> getConsultaView().mostrarMenu());
+                    case 5 -> ejecutarModuloSeguro(() -> getInventarioView().mostrarMenu());
+                    case 6 -> ejecutarModuloSeguro(() -> getAlertaView().mostrarMenu());
+                    case 7 -> ejecutarModuloSeguro(() -> getFacturacionView().mostrarMenu());
+                    case 8 -> ejecutarModuloSeguro(() -> getActividadView().mostrarMenu());
+                    case 9 -> ejecutarModuloSeguro(() -> getReporteView().mostrarMenu());
+                    case 10 -> {
+                        // El asistente de base de datos siempre es accesible en linea y fuera de linea
+                        try {
+                            getConfiguradorConsola().mostrarMenu();
+                        } catch (OperacionCanceladaException e) {
+                            ConsolaUtils.imprimirAdvertencia(e.getMessage() + " Regresando al menu principal...");
+                        }
+                        ConsolaUtils.setMenuActual(menu);
+                    }
+                    case 0 -> {
+                        ConsolaUtils.imprimirInfo("Cerrando sesion de Happy Feet. Hasta pronto.");
+                        LoggerManager.info(MODULO, "Cierre voluntario del sistema por parte del usuario.");
+                        ejecutando = false;
+                    }
+                    default -> ConsolaUtils.imprimirAdvertencia("Opcion fuera de rango.");
                 }
-                case 0 -> {
-                    ConsolaUtils.imprimirInfo("Cerrando sesion de Happy Feet. Hasta pronto.");
-                    LoggerManager.info(MODULO, "Cierre voluntario del sistema por parte del usuario.");
-                    ejecutando = false;
-                }
-                default -> ConsolaUtils.imprimirAdvertencia("Opcion fuera de rango.");
+            } catch (OperacionCanceladaException e) {
+                ConsolaUtils.imprimirAdvertencia("Ya se encuentra en el menu principal. Ingrese 0 si desea salir del sistema.");
             }
         }
     }
@@ -214,11 +222,19 @@ public class MenuPrincipal {
             int op = ConsolaUtils.leerEnteroEnRango("Seleccione una opcion [0-2]: ", 0, 2);
             switch (op) {
                 case 1 -> {
-                    getMascotaView().mostrarMenu();
+                    try {
+                        getMascotaView().mostrarMenu();
+                    } catch (OperacionCanceladaException e) {
+                        ConsolaUtils.imprimirAdvertencia(e.getMessage() + " Regresando al menu anterior...");
+                    }
                     ConsolaUtils.setMenuActual(submenu);
                 }
                 case 2 -> {
-                    getDuenoView().mostrarMenu();
+                    try {
+                        getDuenoView().mostrarMenu();
+                    } catch (OperacionCanceladaException e) {
+                        ConsolaUtils.imprimirAdvertencia(e.getMessage() + " Regresando al menu anterior...");
+                    }
                     ConsolaUtils.setMenuActual(submenu);
                 }
                 case 0 -> enSubmenu = false;
