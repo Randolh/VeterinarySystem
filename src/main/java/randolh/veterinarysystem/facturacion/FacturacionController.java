@@ -2,10 +2,12 @@ package randolh.veterinarysystem.facturacion;
 
 import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.exception.ValidacionException;
+import randolh.veterinarysystem.core.exportador.ExportadorFactory;
+import randolh.veterinarysystem.core.exportador.FormatoExportacion;
+import randolh.veterinarysystem.core.exportador.factura.FacturaExportData;
 import randolh.veterinarysystem.core.patterns.strategy.EstrategiaDescuento;
 import randolh.veterinarysystem.core.patterns.strategy.FactoriaEstrategias;
 import randolh.veterinarysystem.core.utils.LoggerManager;
-import randolh.veterinarysystem.core.utils.PdfExportador;
 import randolh.veterinarysystem.dueno.Dueno;
 import randolh.veterinarysystem.dueno.DuenoDAO;
 import randolh.veterinarysystem.inventario.InventarioDAO;
@@ -150,35 +152,18 @@ public class FacturacionController {
             }
         }
 
-        PdfExportador.exportarFacturaTexto(
-                clinicaNombre, clinicaNit, clinicaTel, clinicaDir,
-                factura.getNumeroFactura(), fechaStr,
-                factura.getNombreDueno(), factura.getDocumentoDueno(),
-                factura.getEmailDueno(), factura.getTelefonoDueno(),
-                factura.getNivelClub(), factura.getPuntosGanados(),
-                itemsList,
-                factura.getSubtotal().doubleValue(),
-                factura.getDescuento().doubleValue(),
-                factura.getImpuesto().doubleValue(),
-                factura.getTotal().doubleValue(),
-                factura.getMetodoPago().getValor(),
-                factura.getEstado().getValor()
-        );
+        FacturaExportData data = FacturaExportData.builder()
+                .conClinica(clinicaNombre, clinicaNit, clinicaTel, clinicaDir)
+                .conFactura(factura.getNumeroFactura(), fechaStr)
+                .conCliente(factura.getNombreDueno(), factura.getDocumentoDueno(), factura.getEmailDueno(), factura.getTelefonoDueno())
+                .conClub(factura.getNivelClub(), factura.getPuntosGanados())
+                .conItems(itemsList)
+                .conMontos(factura.getSubtotal().doubleValue(), factura.getDescuento().doubleValue(), factura.getImpuesto().doubleValue(), factura.getTotal().doubleValue())
+                .conPago(factura.getMetodoPago().getValor(), factura.getEstado().getValor())
+                .build();
 
-        PdfExportador.exportarFacturaPdf(
-                clinicaNombre, clinicaNit, clinicaTel, clinicaDir,
-                factura.getNumeroFactura(), fechaStr,
-                factura.getNombreDueno(), factura.getDocumentoDueno(),
-                factura.getEmailDueno(), factura.getTelefonoDueno(),
-                factura.getNivelClub(), factura.getPuntosGanados(),
-                itemsList,
-                factura.getSubtotal().doubleValue(),
-                factura.getDescuento().doubleValue(),
-                factura.getImpuesto().doubleValue(),
-                factura.getTotal().doubleValue(),
-                factura.getMetodoPago().getValor(),
-                factura.getEstado().getValor()
-        );
+        ExportadorFactory.getExportadorFactura(FormatoExportacion.TEXTO).exportar(data);
+        ExportadorFactory.getExportadorFactura(FormatoExportacion.PDF).exportar(data);
     }
 
     // Busca factura por ID

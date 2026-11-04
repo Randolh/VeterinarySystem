@@ -2,7 +2,11 @@ package randolh.veterinarysystem.mascota;
 
 import randolh.veterinarysystem.consulta.ConsultaDAO;
 import randolh.veterinarysystem.consulta.ProcedimientoEspecial;
+import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.exception.ValidacionException;
+import randolh.veterinarysystem.core.exportador.ExportadorFactory;
+import randolh.veterinarysystem.core.exportador.FormatoExportacion;
+import randolh.veterinarysystem.core.exportador.carnet.CarnetSaludExportData;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 import randolh.veterinarysystem.dueno.Dueno;
 import randolh.veterinarysystem.dueno.DuenoDAO;
@@ -173,6 +177,43 @@ public class MascotaController {
     public List<ProcedimientoEspecial> listarProcedimientosPorMascota(int mascotaId) {
         if (mascotaId <= 0) throw new ValidacionException("ID de mascota invalido.");
         return consultaDAO.listarProcedimientosPorMascota(mascotaId);
+    }
+
+    // Exporta el carnet de salud de una mascota en el formato seleccionado (TXT o PDF)
+    public String exportarCarnetSalud(int mascotaId, FormatoExportacion formato) {
+        Mascota m = obtenerPorId(mascotaId)
+                .orElseThrow(() -> new ValidacionException("No se encontro ninguna mascota con el ID: " + mascotaId));
+
+        List<MascotaDAO.VacunaHistorialItem> vacunas = listarVacunasPorMascota(mascotaId);
+        List<ProcedimientoEspecial> cirugias = listarProcedimientosPorMascota(mascotaId);
+
+        ConexionBD config = ConexionBD.getInstancia();
+        CarnetSaludExportData data = CarnetSaludExportData.builder()
+                .conClinicaNombre(config.getNombreClinica())
+                .conClinicaNit(config.getNitClinica())
+                .conClinicaTel(config.getTelefonoClinica())
+                .conClinicaDir(config.getDireccionClinica())
+                .conMascotaId(m.getId())
+                .conMascotaNombre(m.getNombre())
+                .conEspecie(m.getNombreEspecie())
+                .conRaza(m.getNombreRaza())
+                .conSexo(m.getSexo() != null ? m.getSexo().getValorDb() : "N/D")
+                .conFechaNacimiento(m.getFechaNacimiento() != null ? m.getFechaNacimiento().toString() : "N/D")
+                .conEdadCalculada(m.getEdadCalculada())
+                .conPesoActual(m.getPesoActual())
+                .conMicrochip(m.getMicrochip())
+                .conTatuaje(m.getTatuaje())
+                .conFotoUrl(m.getFotoUrl())
+                .conAlergias(m.getAlergias())
+                .conCondicionesPreexistentes(m.getCondicionesPreexistentes())
+                .conDuenoId(m.getDuenoId())
+                .conDuenoNombre(m.getNombreDueno())
+                .conVacunas(vacunas)
+                .conCirugias(cirugias)
+                .conFechaEmision(LocalDate.now())
+                .build();
+
+        return ExportadorFactory.getExportadorCarnet(formato).exportar(data);
     }
 
     // Validacion de reglas de negocio clinicas
