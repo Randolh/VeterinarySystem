@@ -48,7 +48,7 @@ La clínica veterinaria **"Happy Feet"** experimentaba dificultades operativas c
 - **Motor de Base de Datos:** MySQL Server 8.0+ / MariaDB 10.5+ con motor transaccional `InnoDB`.
 - **Conectividad a Datos:** JDBC nativo (`mysql-connector-j` 8.3.0) con transacciones ACID explícitas, Savepoints y PreparedStatements para prevención de inyecciones SQL.
 - **Gestión y Construcción de Proyecto:** Apache Maven 3.8+.
-- **Generación de Documentos Formales:** OpenPDF (LibrePDF 1.3.39) para exportación nativa de comprobantes de facturación, contratos de adopción y reportes gerenciales en formato PDF.
+- **Generación de Documentos Formales:** OpenPDF (LibrePDF 1.3.39) para exportación nativa de comprobantes de facturación, contratos de adopción, reportes gerenciales y carnets de salud con fotografía en formato PDF.
 - **Auditoría y Bitácora:** Sistema propio de Logging en archivo físico persistente (`app_veterinaria.log`) y tabla relacional de auditoría.
 - **Diseño de Interfaz:** Consola interactiva ANSI con soporte de `NO_COLOR`, maquetación de cuadros dinámicos adaptativos, paginación de tablas y comandos de control de flujo.
 
@@ -74,14 +74,15 @@ randolh.veterinarysystem/
 └── core/          --> Capa transversal compartida
     ├── config/    --> Gestión de conexión JDBC (Singleton) y asistente
     ├── exception/ --> Jerarquía de excepciones de dominio y control de flujo
+    ├── exportador/--> Arquitectura extensible de exportación documental (Strategy/Factory: Facturas, Contratos, Reportes, Carnets en TXT y PDF)
     ├── patterns/  --> Implementaciones de Strategy, Factory y Observer
-    └── utils/     --> Utilidades de consola ANSI, Logger y exportador PDF
+    └── utils/     --> Utilidades de consola ANSI y Logger
 ```
 
 ### Principios de la Arquitectura:
 1. **Alta Cohesión y Bajo Acoplamiento (*Package by Feature*):** Todo el código relacionado con un concepto de negocio (entidad, persistencia, reglas de validación e interfaz de usuario) coexiste dentro del mismo paquete de dominio, facilitando el mantenimiento y la escalabilidad.
 2. **Separación de Responsabilidades (MVC):**
-   - **Vista (`*View`):** Responsable exclusiva de la interacción en consola, captura mediante `ConsolaUtils`, comandos interactivos (`clear`, `:c`) y despliegue de menús y tablas.
+   - **Vista (`*View`):** Responsable exclusiva de la interacción en consola, captura mediante `ConsolaUtils`, comandos interactivos (`:clear`, `:cancel`) y despliegue de menús y tablas.
    - **Controlador (`*Controller`):** Orquestación de reglas de negocio, validaciones defensivas de rangos y unicidad, y captura de excepciones.
    - **Modelo (`*` / `*DAO`):** Entidades de dominio ricas y Data Access Objects que encapsulan la persistencia mediante consultas preparadas en JDBC puro.
 3. **Persistencia Híbrida y Transaccionalidad Delegada:** La lógica de deducción atómica de inventario y auditoría se apoya en disparadores (*triggers*) y procedimientos almacenados en MySQL, garantizando transaccionalidad ACID sin sobrecargar el código de la aplicación.
@@ -92,8 +93,8 @@ randolh.veterinarysystem/
 - **Data Access Object (DAO):** Desacopla la lógica de negocio de la infraestructura MySQL en todos los módulos (`MascotaDAO`, `ConsultaDAO`, `FacturacionDAO`, `InventarioDAO`, etc.).
 - **Builder:** Empleado en [`Mascota.Builder`](src/main/java/randolh/veterinarysystem/mascota/Mascota.java) y [`Factura.Builder`](src/main/java/randolh/veterinarysystem/facturacion/Factura.java) para garantizar construcciones consistentes con validaciones defensivas.
 - **Observer:** Canal reactivo en [`GestorEventos`](src/main/java/randolh/veterinarysystem/core/patterns/observer/GestorEventos.java) para notificaciones instantáneas de inventario crítico (stock mínimo o vencimiento) hacia el centro de alertas.
-- **Strategy:** En el sistema de fidelización del Club de Mascotas (`EstrategiaDescuento`, con implementaciones `DescuentoSinClub`, `DescuentoBronce`, `DescuentoPlata`, `DescuentoOro` y `DescuentoPlatino`).
-- **Factory Method:** En [`FactoriaEstrategias`](src/main/java/randolh/veterinarysystem/core/patterns/strategy/FactoriaEstrategias.java) para instanciar dinámicamente la política de descuento según el puntaje y membresía del cliente.
+- **Strategy:** En el sistema de fidelización del Club de Mascotas (`EstrategiaDescuento`, con implementaciones `DescuentoSinClub`, `DescuentoBronce`, `DescuentoPlata`, `DescuentoOro` y `DescuentoPlatino`), y en la arquitectura desacoplada de exportación documental multi-formato ([`ExportadorDocumento<T>`](src/main/java/randolh/veterinarysystem/core/exportador/ExportadorDocumento.java) con estrategias para facturas, contratos de adopción, reportes y carnets de salud en formatos TXT y PDF bajo el principio Open/Closed).
+- **Factory Method:** En [`FactoriaEstrategias`](src/main/java/randolh/veterinarysystem/core/patterns/strategy/FactoriaEstrategias.java) para instanciar dinámicamente la política de descuento según el puntaje y membresía del cliente, y en [`ExportadorFactory`](src/main/java/randolh/veterinarysystem/core/exportador/ExportadorFactory.java) para resolver la estrategia de exportación documental en tiempo de ejecución.
 - **State:** Implementado en la gestión del ciclo de vida de citas médicas (`ProgramadaState`, `ConfirmadaState`, `EnCursoState`, `FinalizadaState`, `CanceladaState`, etc.).
 
 ---
@@ -106,7 +107,7 @@ randolh.veterinarysystem/
 - **Identificación:** Manejo de microchip (con índice UNIQUE), código de tatuaje y URL de fotografía.
 - **Gestión de Propietarios / Dueños:** Registro con validación regex estricta de correo electrónico único, documento nacional, teléfono y contacto de emergencia.
 - **Transferencia de Propiedad:** Traspaso atómico de mascota a un nuevo tutor legal con registro histórico de auditoría (`historial_transferencias_mascota`).
-- **Carnet de Salud Oficial:** Exportación a archivo de texto (`carnet_mascota_<id>.txt`) integrando datos clínicos, historial de vacunas aplicadas y procedimientos quirúrgicos realizados.
+- **Carnet de Salud Oficial:** Exportación seleccionable en archivo de texto estructurado (`.txt`) o documento formal en PDF (`.pdf`), integrando datos clínicos del paciente, fotografía (descarga y escalado automático de `fotoUrl`), historial de vacunas aplicadas, cirugías realizadas y bloque de firma veterinaria.
 
 ### Módulo 2: Personal Veterinario
 - Catálogo de profesionales médicos con número de tarjeta profesional/licencia única, especialidad médica (Cirugía, Medicina Interna, Dermatología, etc.), horario de atención y estado activo/inactivo.
@@ -372,10 +373,10 @@ Seleccione un modulo [0-10]:
 
 ### Comandos de Control en Consola:
 
-1. **Limpieza Manual de Pantalla (`clear`):**
-   - En cualquier menú de selección de opciones numéricas, puede escribir `clear` (o `limpiar`, `:clear`) para despejar la pantalla y volver a renderizar el menú actual limpio en la parte superior sin perder ningún dato.
-2. **Cancelación Universal de Formularios (`:c` / `:cancel` / `:q`):**
-   - Al diligenciar cualquier formulario (registro de mascota, dueño, cita, consulta, factura), si desea abortar y regresar al menú anterior de forma segura, ingrese el comando `:c`, `:cancel`, `:cancelar` o `:q`.
+1. **Limpieza Manual de Pantalla (`:clear`):**
+   - En cualquier menú de selección de opciones numéricas, puede escribir `:clear` para despejar la pantalla y volver a renderizar el menú actual limpio en la parte superior sin perder ningún dato.
+2. **Cancelación Universal de Formularios (`:cancel`):**
+   - Al diligenciar cualquier formulario (registro de mascota, dueño, cita, consulta, factura), si desea abortar y regresar al menú anterior de forma segura, ingrese el comando `:cancel`.
    - Las palabras comunes sin el prefijo `:` (como escribir la palabra *cancelar*) se aceptan como texto normal del formulario.
 3. **Paginación Inteligente de Tablas:**
    - En todos los listados de datos (pacientes, facturas, citas, inventario), la información se pagina automáticamente para no saturar la terminal.
