@@ -2,9 +2,11 @@ package randolh.veterinarysystem.actividad;
 
 import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.exception.ValidacionException;
+import randolh.veterinarysystem.core.exportador.ExportadorFactory;
+import randolh.veterinarysystem.core.exportador.FormatoExportacion;
+import randolh.veterinarysystem.core.exportador.contrato.ContratoAdopcionExportData;
 import randolh.veterinarysystem.core.patterns.observer.GestorEventos;
 import randolh.veterinarysystem.core.utils.LoggerManager;
-import randolh.veterinarysystem.core.utils.PdfExportador;
 import randolh.veterinarysystem.dueno.Dueno;
 import randolh.veterinarysystem.dueno.DuenoDAO;
 import randolh.veterinarysystem.inventario.InventarioDAO;
@@ -144,23 +146,16 @@ public class ActividadController {
         String fechaSeg = adopcion.getFechaPrimerSeguimiento() != null ? adopcion.getFechaPrimerSeguimiento().toString() : LocalDate.now().plusDays(30).toString();
         String edadStr = (ma.getEdadMascota() != null ? ma.getEdadMascota() + " anos aprox." : "Desconocida");
 
-        PdfExportador.exportarContratoAdopcionTexto(
-                config.getNombreClinica(), config.getNitClinica(), config.getTelefonoClinica(), config.getDireccionClinica(),
-                adopcion.getId(), fechaHoy, adoptante.getNombreCompleto(), adoptante.getNumeroDocumento(),
-                adoptante.getTelefono(), adoptante.getDireccion(), adoptante.getEmail(),
-                ma.getNombreMascota(), ma.getEspecieMascota(), ma.getRazaMascota(), ma.getSexoMascota(), edadStr,
-                ma.getHistoria(), ma.getTemperamento(), ma.getNecesidadesEspeciales(), adopcion.getCondicionesEspeciales(),
-                fechaSeg
-        );
+        ContratoAdopcionExportData data = ContratoAdopcionExportData.builder()
+                .conClinica(config.getNombreClinica(), config.getNitClinica(), config.getTelefonoClinica(), config.getDireccionClinica())
+                .conAdopcion(adopcion.getId(), fechaHoy, fechaSeg)
+                .conAdoptante(adoptante.getNombreCompleto(), adoptante.getNumeroDocumento(), adoptante.getTelefono(), adoptante.getDireccion(), adoptante.getEmail())
+                .conMascota(ma.getNombreMascota(), ma.getEspecieMascota(), ma.getRazaMascota(), ma.getSexoMascota(), edadStr)
+                .conDetalles(ma.getHistoria(), ma.getTemperamento(), ma.getNecesidadesEspeciales(), adopcion.getCondicionesEspeciales())
+                .build();
 
-        PdfExportador.exportarContratoAdopcionPdf(
-                config.getNombreClinica(), config.getNitClinica(), config.getTelefonoClinica(), config.getDireccionClinica(),
-                adopcion.getId(), fechaHoy, adoptante.getNombreCompleto(), adoptante.getNumeroDocumento(),
-                adoptante.getTelefono(), adoptante.getDireccion(), adoptante.getEmail(),
-                ma.getNombreMascota(), ma.getEspecieMascota(), ma.getRazaMascota(), ma.getSexoMascota(), edadStr,
-                ma.getHistoria(), ma.getTemperamento(), ma.getNecesidadesEspeciales(), adopcion.getCondicionesEspeciales(),
-                fechaSeg
-        );
+        ExportadorFactory.getExportadorContrato(FormatoExportacion.TEXTO).exportar(data);
+        ExportadorFactory.getExportadorContrato(FormatoExportacion.PDF).exportar(data);
     }
 
     // Busca un contrato por su ID

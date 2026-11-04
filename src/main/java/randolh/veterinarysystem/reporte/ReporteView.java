@@ -121,21 +121,21 @@ public class ReporteView {
             return;
         }
 
-        System.out.printf(ConsolaUtils.ANSI_BOLD + "%-4s %-25s %-15s %-15s %10s %14s %12s %15s%n" + ConsolaUtils.ANSI_RESET,
+        System.out.printf(ConsolaUtils.ANSI_BOLD + "%-4s %-25s %-15s %-28s %10s %14s %11s %12s%n" + ConsolaUtils.ANSI_RESET,
                 "ID", "VETERINARIO", "LICENCIA", "ESPECIALIDAD", "CONSULTAS", "PROCEDIMIENTOS", "ATENCIONES", "INGRESOS");
-        System.out.println("-".repeat(116));
+        System.out.println("-".repeat(125));
 
-        lista.forEach(v -> System.out.printf("%-4d %-25s %-15s %-15s %10d %14d %12d %15.2f%n",
+        lista.forEach(v -> System.out.printf("%-4d %-25s %-15s %-28s %10d %14d %11d %12.2f%n",
                 v.getVeterinarioId(),
                 truncar(v.getNombreCompleto(), 24),
-                v.getLicenciaProfesional() != null ? v.getLicenciaProfesional() : "-",
-                v.getEspecialidad() != null ? v.getEspecialidad() : "GENERAL",
+                truncar(v.getLicenciaProfesional() != null ? v.getLicenciaProfesional() : "-", 15),
+                truncar(v.getEspecialidad() != null ? v.getEspecialidad() : "GENERAL", 28),
                 v.getTotalConsultas(),
                 v.getTotalProcedimientos(),
                 v.getTotalAtenciones(),
                 v.getIngresosGenerados()));
 
-        System.out.println("-".repeat(116));
+        System.out.println("-".repeat(125));
 
         DoubleSummaryStatistics stats = controller.obtenerEstadisticasIngresosVeterinarios();
         System.out.printf(ConsolaUtils.COLOR_INFO + "Veterinarios Evaluados: %d | Ingresos Totales: $%.2f | Promedio por Medico: $%.2f%n" + ConsolaUtils.ANSI_RESET,
@@ -230,11 +230,11 @@ public class ReporteView {
 
         System.out.printf(ConsolaUtils.ANSI_BOLD + "%-6s %-6s %8s %8s %8s %8s %14s %12s %12s %14s%n" + ConsolaUtils.ANSI_RESET,
                 "AÑO", "MES", "EMITIDAS", "PAGADAS", "PEND", "ANUL", "SUBTOTAL", "DESCUENTOS", "IMPUESTOS", "TOTAL");
-        System.out.println("-".repeat(108));
+        System.out.println("-".repeat(104));
 
-        lista.forEach(r -> System.out.printf("%-6d %02d     %8d %8d %8d %8d %14.2f %12.2f %12.2f %14.2f%n",
+        lista.forEach(r -> System.out.printf("%-6d %-6s %8d %8d %8d %8d %14.2f %12.2f %12.2f %14.2f%n",
                 r.getAnio(),
-                r.getMes(),
+                String.format("%02d", r.getMes()),
                 r.getFacturasEmitidas(),
                 r.getFacturasPagadas(),
                 r.getFacturasPendientes(),
@@ -244,7 +244,7 @@ public class ReporteView {
                 r.getTotalImpuestos(),
                 r.getTotalFacturado()));
 
-        System.out.println("-".repeat(108));
+        System.out.println("-".repeat(104));
 
         double granTotal = controller.calcularTotalFacturadoHistorico();
         System.out.printf(ConsolaUtils.COLOR_EXITO + "Total Facturado Historico: $%.2f%n" + ConsolaUtils.ANSI_RESET, granTotal);

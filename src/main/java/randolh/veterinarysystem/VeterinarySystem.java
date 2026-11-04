@@ -1,6 +1,7 @@
 package randolh.veterinarysystem;
 
 import randolh.veterinarysystem.core.config.ConexionBD;
+import randolh.veterinarysystem.core.exception.OperacionCanceladaException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 
@@ -16,6 +17,10 @@ public class VeterinarySystem {
 
         // Capturador global de excepciones no controladas con registro auditado en disco
         Thread.setDefaultUncaughtExceptionHandler((hilo, error) -> {
+            if (error instanceof OperacionCanceladaException) {
+                ConsolaUtils.imprimirInfo("Cerrando sesion de Happy Feet. Hasta pronto.");
+                return;
+            }
             LoggerManager.error(MODULO, "Fallo no controlado en el hilo: " + hilo.getName(), error);
             ConsolaUtils.imprimirError("Se ha producido una excepcion no controlada: " + error.getMessage());
             ConsolaUtils.imprimirInfo("Consulte app_veterinaria.log para mayor detalle tecnico.");
@@ -38,10 +43,18 @@ public class VeterinarySystem {
         }
 
         // Delegacion al menu principal estructurado
-        MenuPrincipal menu = new MenuPrincipal();
-        menu.iniciar();
+        try {
+            MenuPrincipal menu = new MenuPrincipal();
+            menu.iniciar();
+        } catch (OperacionCanceladaException e) {
+            ConsolaUtils.imprimirInfo("Cerrando sesion de Happy Feet. Hasta pronto.");
+            LoggerManager.info(MODULO, "Cierre voluntario del sistema por parte del usuario.");
+        }
 
         LoggerManager.info(MODULO, "Finalizacion del proceso y apagado del sistema.");
+        try {
+            com.mysql.cj.jdbc.AbandonedConnectionCleanupThread.checkedShutdown();
+        } catch (Throwable ignored) {}
     }
 
     // Muestra el banner corporativo en texto estilizado ANSI sin emojis
