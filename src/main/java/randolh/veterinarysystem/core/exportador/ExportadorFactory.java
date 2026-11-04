@@ -1,5 +1,8 @@
 package randolh.veterinarysystem.core.exportador;
 
+import randolh.veterinarysystem.core.exportador.carnet.CarnetSaludExportData;
+import randolh.veterinarysystem.core.exportador.carnet.CarnetSaludPdfExportador;
+import randolh.veterinarysystem.core.exportador.carnet.CarnetSaludTextoExportador;
 import randolh.veterinarysystem.core.exportador.contrato.ContratoAdopcionExportData;
 import randolh.veterinarysystem.core.exportador.contrato.ContratoAdopcionPdfExportador;
 import randolh.veterinarysystem.core.exportador.contrato.ContratoAdopcionTextoExportador;
@@ -36,6 +39,14 @@ public final class ExportadorFactory {
         return switch (formato) {
             case PDF -> new ReportePdfExportador();
             case TEXTO -> new ReporteTextoExportador();
+        };
+    }
+
+    // Obtiene la estrategia adecuada para exportacion de carnet de salud
+    public static ExportadorDocumento<CarnetSaludExportData> getExportadorCarnet(FormatoExportacion formato) {
+        return switch (formato) {
+            case PDF -> new CarnetSaludPdfExportador();
+            case TEXTO -> new CarnetSaludTextoExportador();
         };
     }
 }
