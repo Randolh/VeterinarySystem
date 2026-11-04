@@ -3,6 +3,7 @@ package randolh.veterinarysystem.mascota;
 import randolh.veterinarysystem.consulta.ProcedimientoEspecial;
 import randolh.veterinarysystem.core.config.ConexionBD;
 import randolh.veterinarysystem.core.exception.ValidacionException;
+import randolh.veterinarysystem.core.exportador.FormatoExportacion;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 
@@ -295,7 +296,7 @@ public class MascotaView {
         }
     }
 
-    // Exporta el carnet oficial de salud en texto limpio estructurado
+    // Exporta el carnet oficial de salud en texto limpio o PDF formal
     private void exportarCarnetSalud() {
         ConsolaUtils.imprimirSubtitulo("Exportar Carnet de Salud de la Mascota");
         int id = ConsolaUtils.leerEntero("Ingrese el ID de la mascota: ");
@@ -307,106 +308,19 @@ public class MascotaView {
         }
 
         Mascota m = opt.get();
-        ConexionBD config = ConexionBD.getInstancia();
+        System.out.println("\nSeleccione el formato de exportacion:");
+        System.out.println("  1. Archivo de Texto (.txt)");
+        System.out.println("  2. Documento PDF Formal (.pdf)");
+        int opcionFormato = ConsolaUtils.leerEnteroEnRango("Seleccione formato [1-2]: ", 1, 2);
+        FormatoExportacion formato = (opcionFormato == 1) ? FormatoExportacion.TEXTO : FormatoExportacion.PDF;
 
-        File dir = new File("exportaciones/carnets");
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-
-        File archivo = new File(dir, "carnet_mascota_" + m.getId() + ".txt");
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(archivo), StandardCharsets.UTF_8))) {
-            pw.println("================================================================================");
-            pw.println("                   " + config.getNombreClinica().toUpperCase());
-            pw.println("                  NIT: " + config.getNitClinica() + " - Tel: " + config.getTelefonoClinica());
-            pw.println("                       " + config.getDireccionClinica());
-            pw.println("================================================================================");
-            pw.println("                     CARNET DE SALUD Y CONTROL CLINICO");
-            pw.println("--------------------------------------------------------------------------------");
-            pw.printf(" Paciente ID   : #%d%n", m.getId());
-            pw.printf(" Nombre        : %s%n", m.getNombre());
-            pw.printf(" Especie / Raza: %s / %s%n", m.getNombreEspecie(), m.getNombreRaza());
-            pw.printf(" Sexo          : %s%n", m.getSexo().getValorDb());
-            pw.printf(" Nacimiento    : %s (Edad: %s)%n", m.getFechaNacimiento(), m.getEdadCalculada());
-            pw.printf(" Peso Actual   : %.2f kg%n", m.getPesoActual());
-            pw.printf(" Microchip     : %s%n", m.getMicrochip() != null ? m.getMicrochip() : "No implantado");
-            pw.printf(" Tatuaje       : %s%n", m.getTatuaje() != null ? m.getTatuaje() : "No registrado");
-            pw.println("--------------------------------------------------------------------------------");
-            pw.println(" INFORMACION DEL PROPIETARIO:");
-            pw.printf(" Responsable   : %s (ID Cliente: #%d)%n", m.getNombreDueno(), m.getDuenoId());
-            pw.println("--------------------------------------------------------------------------------");
-            pw.println(" ANTECEDENTES CLINICOS:");
-            pw.printf(" Alergias      : %s%n", m.getAlergias() != null ? m.getAlergias() : "Ninguna reportada");
-            pw.printf(" Condiciones   : %s%n", m.getCondicionesPreexistentes() != null ? m.getCondicionesPreexistentes() : "Sin condiciones preexistentes");
-            pw.println("--------------------------------------------------------------------------------");
-
-            DateTimeFormatter dtfFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            DateTimeFormatter dtfHora = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-            // 1. Historial de Vacunacion y Biologicos
-            List<MascotaDAO.VacunaHistorialItem> vacunas = controller.listarVacunasPorMascota(m.getId());
-            pw.println(" HISTORIAL DE VACUNACION Y BIOLOGICOS:");
-            pw.println("--------------------------------------------------------------------------------");
-            if (vacunas.isEmpty()) {
-                pw.println("  (No se registran vacunas aplicadas para esta mascota)");
-            } else {
-                pw.printf("| %-10s | %-28s | %-12s | %-10s | %-20s |%n",
-                        "Fecha Apl.", "Vacuna / Biologico", "Lote", "Prox. Dosis", "Profesional");
-                pw.println("+------------+------------------------------+--------------+------------+----------------------+");
-                for (MascotaDAO.VacunaHistorialItem v : vacunas) {
-                    String fApl = v.getFechaAplicacion() != null ? v.getFechaAplicacion().format(dtfFecha) : "N/D";
-                    String fProx = v.getProximaDosis() != null ? v.getProximaDosis().format(dtfFecha) : "N/D";
-                    pw.printf("| %-10s | %-28s | %-12s | %-10s | %-20s |%n",
-                            fApl,
-                            truncar(v.getNombreVacuna(), 28),
-                            truncar(v.getLote(), 12),
-                            fProx,
-                            truncar(v.getVeterinario(), 20));
-                }
-            }
-            pw.println("--------------------------------------------------------------------------------");
-
-            // 2. Historial de Procedimientos Quirurgicos y Cirugias
-            List<ProcedimientoEspecial> cirugias = controller.listarProcedimientosPorMascota(m.getId());
-            pw.println(" HISTORIAL DE CIRUGIAS Y PROCEDIMIENTOS ESPECIALES:");
-            pw.println("--------------------------------------------------------------------------------");
-            if (cirugias.isEmpty()) {
-                pw.println("  (No se registran procedimientos quirurgicos para esta mascota)");
-            } else {
-                pw.printf("| %-16s | %-32s | %-12s | %-20s |%n",
-                        "Fecha / Hora", "Procedimiento", "Estado", "Cirujano");
-                pw.println("+------------------+----------------------------------+--------------+----------------------+");
-                for (ProcedimientoEspecial p : cirugias) {
-                    String fProc = p.getFechaHora() != null ? p.getFechaHora().format(dtfHora) : "N/D";
-                    pw.printf("| %-16s | %-32s | %-12s | %-20s |%n",
-                            fProc,
-                            truncar(p.getNombreProcedimiento(), 32),
-                            p.getEstado() != null ? p.getEstado().getValorDb() : "N/D",
-                            truncar(p.getNombreVeterinario() != null ? p.getNombreVeterinario() : "No asignado", 20));
-                    if (p.getDetalleProcedimiento() != null && !p.getDetalleProcedimiento().trim().isEmpty()) {
-                        pw.println("   Detalle       : " + p.getDetalleProcedimiento());
-                    }
-                    if (p.getSeguimientoPostoperatorio() != null && !p.getSeguimientoPostoperatorio().trim().isEmpty()) {
-                        pw.println("   Postoperatorio: " + p.getSeguimientoPostoperatorio());
-                    }
-                    if (p.getProximoControl() != null) {
-                        pw.println("   Proximo Control: " + p.getProximoControl().format(dtfFecha));
-                    }
-                }
-            }
-            pw.println("--------------------------------------------------------------------------------");
-            pw.printf(" Fecha Emision : %s%n", LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            pw.println();
-            pw.println("               _____________________________________________");
-            pw.println("                         Firma del Medico Veterinario");
-            pw.println("================================================================================");
-
-            ConsolaUtils.imprimirExito("Carnet de salud generado exitosamente en: " + archivo.getAbsolutePath());
-            LoggerManager.info(MODULO, "Carnet exportado para paciente ID " + m.getId());
-
-        } catch (IOException e) {
-            ConsolaUtils.imprimirError("Fallo al escribir el carnet: " + e.getMessage());
-            LoggerManager.error(MODULO, "Error al exportar carnet", e);
+        try {
+            String rutaArchivo = controller.exportarCarnetSalud(m.getId(), formato);
+            ConsolaUtils.imprimirExito("Carnet de salud generado exitosamente en: " + rutaArchivo);
+            LoggerManager.info(MODULO, "Carnet exportado para paciente ID " + m.getId() + " en formato " + formato);
+        } catch (Exception e) {
+            ConsolaUtils.imprimirError("Error al generar carnet de salud: " + e.getMessage());
+            LoggerManager.error(MODULO, "Error al generar carnet de salud", e);
         }
     }
 

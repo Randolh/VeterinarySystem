@@ -1,5 +1,6 @@
 package randolh.veterinarysystem.core.config;
 
+import randolh.veterinarysystem.core.exception.OperacionCanceladaException;
 import randolh.veterinarysystem.core.utils.ConsolaUtils;
 import randolh.veterinarysystem.core.utils.LoggerManager;
 
@@ -36,23 +37,28 @@ public class ConfiguradorConsola {
 
         boolean continuar = true;
         while (continuar) {
-            menu.run();
-            int opcion = ConsolaUtils.leerEnteroEnRango("Seleccione una opcion [0-4]: ", 0, 4);
+            try {
+                menu.run();
+                int opcion = ConsolaUtils.leerEnteroEnRango("Seleccione una opcion [0-4]: ", 0, 4);
 
-            switch (opcion) {
-                case 1 -> probarConectividad();
-                case 2 -> mostrarParametrosActuales();
-                case 3 -> reconfigurarCredenciales();
-                case 4 -> ejecutarReconstruccionBaseDatos();
-                case 0 -> {
-                    ConsolaUtils.imprimirInfo("Regresando al menu anterior...");
-                    continuar = false;
+                switch (opcion) {
+                    case 1 -> probarConectividad();
+                    case 2 -> mostrarParametrosActuales();
+                    case 3 -> reconfigurarCredenciales();
+                    case 4 -> ejecutarReconstruccionBaseDatos();
+                    case 0 -> {
+                        ConsolaUtils.imprimirInfo("Regresando al menu anterior...");
+                        continuar = false;
+                    }
+                    default -> ConsolaUtils.imprimirError("Opcion no reconocida.");
                 }
-                default -> ConsolaUtils.imprimirError("Opcion no reconocida.");
-            }
 
-            if (continuar) {
-                ConsolaUtils.pausar();
+                if (continuar) {
+                    ConsolaUtils.pausar();
+                }
+            } catch (OperacionCanceladaException e) {
+                ConsolaUtils.imprimirAdvertencia(e.getMessage() + " Regresando al menu principal...");
+                continuar = false;
             }
         }
     }
@@ -111,20 +117,24 @@ public class ConfiguradorConsola {
         ConsolaUtils.imprimirSubtitulo("Reconfigurar Credenciales MySQL");
         ConsolaUtils.imprimirInfo("Presione [Enter] en cualquier campo para mantener el valor actual mostrado entre corchetes.");
 
-        String nuevoHost = ConsolaUtils.leerTextoOpcional("Host de MySQL", config.getHost());
-        int nuevoPuerto = ConsolaUtils.leerEnteroEnRango("Puerto de MySQL [" + config.getPort() + "]: ", 1, 65535);
-        String nuevaBd = ConsolaUtils.leerTextoOpcional("Nombre de la Base de Datos", config.getDbName());
-        String nuevoUser = ConsolaUtils.leerTextoOpcional("Usuario de MySQL", config.getUser());
-        String nuevoPass = ConsolaUtils.leerTextoOpcional("Contrasena de MySQL", config.getPassword());
+        try {
+            String nuevoHost = ConsolaUtils.leerTextoOpcional("Host de MySQL", config.getHost());
+            int nuevoPuerto = ConsolaUtils.leerEnteroEnRango("Puerto de MySQL [" + config.getPort() + "]: ", 1, 65535);
+            String nuevaBd = ConsolaUtils.leerTextoOpcional("Nombre de la Base de Datos", config.getDbName());
+            String nuevoUser = ConsolaUtils.leerTextoOpcional("Usuario de MySQL", config.getUser());
+            String nuevoPass = ConsolaUtils.leerTextoOpcional("Contrasena de MySQL", config.getPassword());
 
-        boolean guardar = ConsolaUtils.leerBooleano("Desea guardar estos cambios en 'database.properties'?");
-        if (guardar) {
-            persistirArchivoPropiedades(nuevoHost, nuevoPuerto, nuevaBd, nuevoUser, nuevoPass, config);
-            config.cargarPropiedadesCascada();
-            ConsolaUtils.imprimirExito("Configuracion actualizada y recargada en memoria exitosamente.");
-            probarConectividad();
-        } else {
-            ConsolaUtils.imprimirAdvertencia("Cambios descartados.");
+            boolean guardar = ConsolaUtils.leerBooleano("Desea guardar estos cambios en 'database.properties'?");
+            if (guardar) {
+                persistirArchivoPropiedades(nuevoHost, nuevoPuerto, nuevaBd, nuevoUser, nuevoPass, config);
+                config.cargarPropiedadesCascada();
+                ConsolaUtils.imprimirExito("Configuracion actualizada y recargada en memoria exitosamente.");
+                probarConectividad();
+            } else {
+                ConsolaUtils.imprimirAdvertencia("Cambios descartados.");
+            }
+        } catch (OperacionCanceladaException e) {
+            ConsolaUtils.imprimirAdvertencia("Reconfiguracion de credenciales cancelada. No se aplicaron cambios.");
         }
     }
 
@@ -163,28 +173,32 @@ public class ConfiguradorConsola {
         System.out.println(ConsolaUtils.COLOR_ADVERTENCIA + "ATENCION: Esta operacion borrara y recreara la base de datos");
         System.out.println("ejecutando secuencialmente el esquema DDL, triggers/SP y datos semilla DML." + ConsolaUtils.ANSI_RESET);
 
-        boolean confirmacion = ConsolaUtils.leerBooleano("Esta seguro de continuar?");
-        if (!confirmacion) {
-            ConsolaUtils.imprimirAdvertencia("Operacion cancelada por el usuario.");
-            return;
-        }
-
-        System.out.println();
-        DatabaseAdminService.ResultadoInicializacion resultado = adminService.inicializarBaseDatos(mensaje -> {
-            if (mensaje.startsWith("[OK]")) {
-                ConsolaUtils.imprimirExito(mensaje.substring(4).trim());
-            } else if (mensaje.startsWith("[ERROR]") || mensaje.startsWith("[FALLO]")) {
-                ConsolaUtils.imprimirError(mensaje);
-            } else {
-                ConsolaUtils.imprimirInfo(mensaje);
+        try {
+            boolean confirmacion = ConsolaUtils.leerBooleano("Esta seguro de continuar?");
+            if (!confirmacion) {
+                ConsolaUtils.imprimirAdvertencia("Operacion cancelada por el usuario.");
+                return;
             }
-        });
 
-        System.out.println();
-        if (resultado.isExitoso()) {
-            ConsolaUtils.imprimirExito(resultado.getMensaje());
-        } else {
-            ConsolaUtils.imprimirError("Fallo en la inicializacion: " + resultado.getMensaje());
+            System.out.println();
+            DatabaseAdminService.ResultadoInicializacion resultado = adminService.inicializarBaseDatos(mensaje -> {
+                if (mensaje.startsWith("[OK]")) {
+                    ConsolaUtils.imprimirExito(mensaje.substring(4).trim());
+                } else if (mensaje.startsWith("[ERROR]") || mensaje.startsWith("[FALLO]")) {
+                    ConsolaUtils.imprimirError(mensaje);
+                } else {
+                    ConsolaUtils.imprimirInfo(mensaje);
+                }
+            });
+
+            System.out.println();
+            if (resultado.isExitoso()) {
+                ConsolaUtils.imprimirExito(resultado.getMensaje());
+            } else {
+                ConsolaUtils.imprimirError("Fallo en la inicializacion: " + resultado.getMensaje());
+            }
+        } catch (OperacionCanceladaException e) {
+            ConsolaUtils.imprimirAdvertencia("Inicializacion de base de datos cancelada por el usuario.");
         }
     }
 }

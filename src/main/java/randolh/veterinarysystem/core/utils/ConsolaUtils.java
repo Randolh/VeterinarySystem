@@ -150,7 +150,7 @@ public final class ConsolaUtils {
         System.out.println();
         System.out.println(COLOR_TITULO + "--- " + subtitulo + " ---" + ANSI_RESET);
         if (subtitulo != null && !subtitulo.startsWith("Pagina ")) {
-            System.out.println(ANSI_GRAY + "(Escriba ':c' o ':cancel' en cualquier momento para abortar y volver al menu)" + ANSI_RESET);
+            System.out.println(ANSI_GRAY + "(Escriba ':cancel' en cualquier momento para abortar y volver al menu)" + ANSI_RESET);
         }
     }
 
@@ -166,11 +166,11 @@ public final class ConsolaUtils {
         System.out.println(COLOR_ERROR + "[ERROR] " + mensaje + ANSI_RESET);
     }
 
-    // Valida si el texto ingresado corresponde a un comando de cancelacion de formulario (con prefijo ':')
+    // Valida si el texto ingresado corresponde al comando de cancelacion de formulario ':cancel'
     public static boolean esComandoCancelar(String entrada) {
         if (entrada == null) return false;
         String val = entrada.trim().toLowerCase();
-        return val.equals(":c") || val.equals(":cancel") || val.equals(":cancelar") || val.equals(":q");
+        return val.equals(":cancel");
     }
 
     public static void verificarCancelacion(String entrada) {
@@ -179,12 +179,11 @@ public final class ConsolaUtils {
         }
     }
 
-    // Valida si el texto ingresado corresponde a un comando de limpieza manual de pantalla en menus
+    // Valida si el texto ingresado corresponde al comando de limpieza manual de pantalla ':clear'
     public static boolean esComandoLimpiar(String entrada) {
         if (entrada == null) return false;
         String val = entrada.trim().toLowerCase();
-        return val.equals("clear") || val.equals("limpiar")
-                || val.equals(":clear") || val.equals("/clear");
+        return val.equals(":clear");
     }
 
     public static void imprimirAdvertencia(String mensaje) {
@@ -283,7 +282,7 @@ public final class ConsolaUtils {
                 imprimirError(String.format("El valor debe estar comprendido entre %d y %d.", min, max));
                 repintarMenuActual();
             } catch (NumberFormatException e) {
-                imprimirError(String.format("Entrada invalida. Ingrese una opcion entre %d y %d (o escriba 'clear' para limpiar).", min, max));
+                imprimirError(String.format("Entrada invalida. Ingrese una opcion entre %d y %d (o escriba ':clear' para limpiar).", min, max));
                 repintarMenuActual();
             }
         }
