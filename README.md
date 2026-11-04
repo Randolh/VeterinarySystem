@@ -13,7 +13,7 @@
 2. [Tecnologías Utilizadas](#tecnologías-utilizadas)
 3. [Arquitectura y Patrones de Diseño](#arquitectura-y-patrones-de-diseño)
 4. [Funcionalidades Implementadas](#funcionalidades-implementadas) *(Ver [Especificación de Requerimientos IEEE](docs/REQUERIMIENTOS.md))*
-5. [Modelo de la Base de Datos](#modelo-de-la-base-de-datos)
+5. [Modelo de la Base de Datos](#modelo-de-la-base-de-datos) *(Ver [Documentación y Diagramas ER](docs/BASE_DE_DATOS.md))*
 6. [Instrucciones de Instalación y Configuración](#instrucciones-de-instalación-y-configuración)
    - [Requisitos Previos](#requisitos-previos)
    - [Clonación del Repositorio](#clonación-del-repositorio)
@@ -158,6 +158,8 @@ randolh.veterinarysystem/
 ---
 
 ## Modelo de la Base de Datos
+
+> Para una descripción detallada de tablas, claves foráneas, disparadores y visualización de los 5 diagramas ER temáticos, consulte la **[Documentación de la Base de Datos](docs/BASE_DE_DATOS.md)**.
 
 La base de datos `happy_feet_veterinaria` cuenta con **31 tablas relacionales**, integridad referencial estricta (`ON DELETE RESTRICT` / `CASCADE`), claves foráneas compuestas, checks de validación y automatización mediante *Triggers*, *Stored Procedures*, *Functions* y *Scheduled Events*.
 
